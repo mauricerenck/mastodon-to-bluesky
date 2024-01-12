@@ -1,0 +1,17 @@
+{
+  "name": "mastodon-to-bluesky",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Maurice Renck <hello@maurice-renck.de>",
+  "license": "MIT",
+  "dependencies": {
+    "@atproto/api": "^0.6.23",
+    "axios": "^1.6.2",
+    "dotenv": "^16.3.1",
+    "mastodon-api": "^1.3.0"
+  }
+}
