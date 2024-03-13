@@ -64,7 +64,7 @@ async function fetchNewPosts() {
 
   let newTimestampId = 0;
   
-  reversed.forEach(item => {
+  for(let item of reversed) {
     const currentTimestampId = Date.parse(item.published);
 
     if(currentTimestampId > newTimestampId) {
@@ -73,7 +73,9 @@ async function fetchNewPosts() {
 
    if(currentTimestampId > lastProcessedPostId && lastProcessedPostId != 0) {
       const text = removeHtmlTags(item.object.content);
-      postToBluesky(text);
+      await postToBluesky(text);
+      lastProcessedPostId = newTimestampId;
+      await saveLastProcessedPostId();
     }
   })
 
