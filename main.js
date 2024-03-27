@@ -12,7 +12,11 @@ const mastodonUser = process.env.MASTODON_USER;
 const agent = new BskyAgent({ service: process.env.BLUESKY_ENDPOINT });
 
 // File to store the last processed Mastodon post ID
-const lastProcessedPostIdFile = path.join(__dirname, "lastProcessedPostId.txt");
+const lastProcessedPostIdFile = path.join(
+  __dirname,
+  "data",
+  "lastProcessedPostId.txt"
+);
 
 // Variable to store the last processed Mastodon post ID
 let lastProcessedPostId = loadLastProcessedPostId();
@@ -56,28 +60,31 @@ function removeHtmlTags(input) {
 
 // Function to periodically fetch new Mastodon posts
 async function fetchNewPosts() {
-  const response = await axios.get(`${mastodonInstance}/users/${mastodonUser}/outbox?page=true`);
+  const response = await axios.get(
+    `${mastodonInstance}/users/${mastodonUser}/outbox?page=true`
+  );
 
-  const reversed = response.data.orderedItems.filter(item => item.object.type === 'Note')
-	.filter(item => item.object.inReplyTo === null)
-	.reverse();
+  const reversed = response.data.orderedItems
+    .filter((item) => item.object.type === "Note")
+    .filter((item) => item.object.inReplyTo === null)
+    .reverse();
 
   let newTimestampId = 0;
-  
-  reversed.forEach(item => {
+
+  reversed.forEach((item) => {
     const currentTimestampId = Date.parse(item.published);
 
-    if(currentTimestampId > newTimestampId) {
+    if (currentTimestampId > newTimestampId) {
       newTimestampId = currentTimestampId;
     }
 
-   if(currentTimestampId > lastProcessedPostId && lastProcessedPostId != 0) {
+    if (currentTimestampId > lastProcessedPostId && lastProcessedPostId != 0) {
       const text = removeHtmlTags(item.object.content);
       postToBluesky(text);
     }
-  })
+  });
 
-  if(newTimestampId > 0) {
+  if (newTimestampId > 0) {
     lastProcessedPostId = newTimestampId;
     saveLastProcessedPostId();
   }
