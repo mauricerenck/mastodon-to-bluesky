@@ -92,4 +92,4 @@ async function fetchNewPosts() {
 
 fetchNewPosts();
 // Fetch new posts every 5 minutes (adjust as needed)
-setInterval(fetchNewPosts, 2 * 60 * 1000);
+setInterval(fetchNewPosts, (process.env.INTERVAL_MINUTES ?? 5) * 60 * 1000);
