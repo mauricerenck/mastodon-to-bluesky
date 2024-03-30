@@ -1,4 +1,6 @@
-FROM node:21-bookworm-slim
+ARG NODE_VERSION=20
+
+FROM node:${NODE_VERSION}-bookworm-slim
 
 WORKDIR /usr/src/app
 

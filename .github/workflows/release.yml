@@ -1,0 +1,44 @@
+name: Release
+on:
+    release:
+        types:
+            - created
+env:
+    IMAGE_NAME: ${{ github.repository }}
+    REGISTRY: ghcr.io
+
+jobs:
+    release:
+        name: Release
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+
+        permissions:
+            packages: write
+            contents: read
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Login to container registry
+              uses: docker/login-action@v3
+              with:
+                  registry: ${{ env.REGISTRY }}
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Get version
+              id: version
+              uses: battila7/get-version-action@v2
+
+            - name: Add Semantic Version tag to Docker Image
+              uses: shrink/actions-docker-registry-tag@v4
+              with:
+                  registry: ${{ env.REGISTRY }}
+                  repository: ${{ env.IMAGE_NAME }}
+                  target: 'main'
+                  tags: |
+                      ${{ steps.version.outputs.version-without-v }}
+                      ${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}
+                      latest

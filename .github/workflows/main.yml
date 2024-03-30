@@ -1,0 +1,73 @@
+name: CI
+on:
+    push:
+        branches:
+            - main
+jobs:
+    build:
+        name: Build docker image
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            packages: write
+            contents: read
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Read .nvmrc
+              run: echo "NODE_VERSION=$(awk -F. '{print $1}' .nvmrc)" >> $GITHUB_OUTPUT
+              id: nvm
+
+            - name: Login to container registry
+              uses: docker/login-action@v3
+              with:
+                  registry: ${{ env.REGISTRY }}
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Extract Docker image metadata
+              id: meta
+              uses: docker/metadata-action@v5
+              with:
+                  images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+                  tags: |
+                      type=schedule
+                      type=ref,event=pr
+                      type=semver,pattern={{version}}
+                      type=sha,prefix={{branch}}-,format=short
+                      type=sha,prefix=,format=short
+                      {{branch}}
+
+            - name: Build Docker image
+              uses: docker/build-push-action@v5
+              with:
+                  context: .
+                  labels: ${{ steps.meta.outputs.labels }}
+                  push: true
+                  tags: ${{ steps.meta.outputs.tags }}
+                  build-args: |
+                      NODE_VERSION=${{ steps.nvm.outputs.NODE_VERSION }}
+
+    release:
+        name: Release
+        if: github.ref == 'refs/heads/main'
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v3
+              with:
+                  node-version: 20
+
+            - name: Install
+              run: npm install
+
+            - name: Release
+              env:
+                  GITHUB_TOKEN: ${{ secrets.PAT_SEMANTIC_RELEASE }}
+              run: npx semantic-release
