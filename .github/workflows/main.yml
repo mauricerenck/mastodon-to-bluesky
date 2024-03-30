@@ -51,6 +51,7 @@ jobs:
 
     release:
         name: Release
+        needs: build
         if: github.ref == 'refs/heads/main'
         runs-on: ubuntu-latest
         steps:
@@ -59,13 +60,17 @@ jobs:
               with:
                   fetch-depth: 0
 
-            - name: Setup Node.js
-              uses: actions/setup-node@v3
+            - name: Read .nvmrc
+              run: echo "NODE_VERSION=$(cat .nvmrc)" >> $GITHUB_OUTPUT
+              id: nvm
+
+            - name: Setup Node
+              uses: actions/setup-node@v4
               with:
-                  node-version: 20
+                  node-version: ${{ steps.nvm.outputs.NODE_VERSION }}
 
             - name: Install
-              run: npm install
+              run: npm ci --ignore-scripts
 
             - name: Release
               env:
