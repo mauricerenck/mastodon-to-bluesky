@@ -78,6 +78,6 @@ jobs:
               run: npm ci --ignore-scripts
 
             - name: Release
-              # env:
-              #     GITHUB_TOKEN: ${{ secrets.PAT_SEMANTIC_RELEASE }}
+              env:
+                  GITHUB_TOKEN: ${{ secrets.PAT_SEMANTIC_RELEASE }}
               run: npx semantic-release
