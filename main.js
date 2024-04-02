@@ -58,6 +58,15 @@ function removeHtmlTags(input) {
   return input.replace(/<[^>]*>/g, "");
 }
 
+function truncate(text, timestampId) {
+  if (text.length > 300) {
+    console.warn(`✂ post '${timestampId}' was truncated`)
+    return text.substring(0, 299) + '…'
+  }
+
+  return text
+}
+
 // Function to periodically fetch new Mastodon posts
 async function fetchNewPosts() {
   const response = await axios.get(
@@ -74,13 +83,18 @@ async function fetchNewPosts() {
   reversed.forEach((item) => {
     const currentTimestampId = Date.parse(item.published);
 
-    if (currentTimestampId > newTimestampId) {
-      newTimestampId = currentTimestampId;
-    }
-
     if (currentTimestampId > lastProcessedPostId && lastProcessedPostId != 0) {
-      const text = removeHtmlTags(item.object.content);
-      postToBluesky(text);
+      try {
+        console.log('📧 posting to BlueSky', currentTimestampId)
+        const text = truncate(removeHtmlTags(item.object.content), currentTimestampId);
+        postToBluesky(text);
+
+        if (currentTimestampId > newTimestampId) {
+          newTimestampId = currentTimestampId;
+        }
+      } catch (error) {
+        console.error('🔥 can\'t post to Bluesky', currentTimestampId, error)
+      }
     }
   });
 
