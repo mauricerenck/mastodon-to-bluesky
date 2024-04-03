@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/mauricerenck/mastodon-to-bluesky/compare/v1.0.0...v1.1.0) (2024-04-03)
+
+
+### Features
+
+* add error-handling for Bluesky posting; truncate messages with more than 300 chars ([#7](https://github.com/mauricerenck/mastodon-to-bluesky/issues/7)) ([032677e](https://github.com/mauricerenck/mastodon-to-bluesky/commit/032677e3715566db9d26dd79a93d38776ddd4bc1))
+
 # 1.0.0 (2024-03-30)
 
 
