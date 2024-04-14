@@ -10,6 +10,10 @@ const mastodonUser = process.env.MASTODON_USER;
 
 // Bluesky agent
 const agent = new BskyAgent({ service: process.env.BLUESKY_ENDPOINT });
+await agent.login({
+  identifier: process.env.BLUESKY_HANDLE,
+  password: process.env.BLUESKY_PASSWORD,
+});
 
 // File to store the last processed Mastodon post ID
 const lastProcessedPostIdFile = path.join(
@@ -40,17 +44,40 @@ function saveLastProcessedPostId() {
   }
 }
 
-async function postToBluesky(text) {
-  await agent.login({
-    identifier: process.env.BLUESKY_HANDLE,
-    password: process.env.BLUESKY_PASSWORD,
-  });
-
+async function postToBluesky(text, images) {
   const richText = new RichText({ text });
   await richText.detectFacets(agent);
+
+  const blueSkyImages = await images.reduce(async (list, {url, alt}) => {
+    const imageResponse = await axios.get({ 
+      url, 
+      method: 'GET',
+      responseType: 'blob',
+     });
+
+     const uploadResponse = await agent.uploadBlob(imageResponse.data);
+
+     return [
+      ...list, 
+      {
+        alt,
+        image: uploadResponse.blob, 
+      }
+    ];
+  }, []);
+
   await agent.post({
     text: richText.text,
     facets: richText.facets,
+    ...(blueSkyImages.length > 0
+      ? {
+        embed: {
+          type: 'app.bsky.embed.images',
+          images: blueSkyImages,
+        }
+      }
+      : {}
+    ),
   });
 }
 
@@ -87,7 +114,11 @@ async function fetchNewPosts() {
       try {
         console.log('📧 posting to BlueSky', currentTimestampId)
         const text = truncate(removeHtmlTags(item.object.content), currentTimestampId);
-        postToBluesky(text);
+
+        const images = item.attachment
+          .filter(attachment => attachment.type === 'Document' && attachment.mediaType.startsWith('image/'))
+          .map(({name: alt, url}) => ({ alt, url }));
+        postToBluesky(text, images);
 
         if (currentTimestampId > newTimestampId) {
           newTimestampId = currentTimestampId;
