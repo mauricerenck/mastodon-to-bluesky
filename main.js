@@ -44,10 +44,17 @@ function saveLastProcessedPostId() {
   }
 }
 
-async function postToBluesky(text, images) {
+async function createBlueskyMessage(text) {
   const richText = new RichText({ text });
   await richText.detectFacets(agent);
 
+  return {
+    text: richText.text,
+    facets: richText.facets
+  };
+}
+
+async function postToBluesky(textParts, images) {
   const blueSkyImages = await images.reduce(async (list, {url, alt}) => {
     const imageResponse = await axios.get({ 
       url, 
@@ -66,9 +73,8 @@ async function postToBluesky(text, images) {
     ];
   }, []);
 
-  await agent.post({
-    text: richText.text,
-    facets: richText.facets,
+  const rootMessageResponse = await agent.post({
+    ...(await createBlueskyMessage(textParts[0])),
     ...(blueSkyImages.length > 0
       ? {
         embed: {
@@ -79,19 +85,50 @@ async function postToBluesky(text, images) {
       : {}
     ),
   });
+
+  if (textParts.length === 1) return;
+
+  let replyMessageResponse = null
+  for (let index = 1; index < textParts.length; index++) {
+    replyMessageResponse = await agent.post({
+      ...(await createBlueskyMessage(textParts[index])),
+      reply: {
+        root: rootMessageResponse,
+        parent: replyMessageResponse ?? rootMessageResponse,
+      }
+    });
+  }  
 }
 
 function removeHtmlTags(input) {
   return input.replace(/<[^>]*>/g, "");
 }
 
-function truncate(text, timestampId) {
-  if (text.length > 300) {
-    console.warn(`✂ post '${timestampId}' was truncated`)
-    return text.substring(0, 299) + '…'
+function splitText(text, maxLength) {
+  // Split the text by spaces
+  const words = text.split(" ");
+
+  let result = [];
+  let currentChunk = "";
+
+  for (const word of words) {
+      // Add the current word to the current chunk
+      const potentialChunk = `${currentChunk} ${word}`.trim();
+
+      if (potentialChunk.length <= maxLength) {
+          // If the current chunk is still under max length, add the word
+          currentChunk = potentialChunk;
+      } else {
+          // Otherwise, add the current chunk to the result and start a new chunk
+          result.push(currentChunk);
+          currentChunk = word;
+      }
   }
 
-  return text
+  // Add the last chunk to the result
+  result.push(currentChunk);
+
+  return result;
 }
 
 // Function to periodically fetch new Mastodon posts
@@ -113,12 +150,12 @@ async function fetchNewPosts() {
     if (currentTimestampId > lastProcessedPostId && lastProcessedPostId != 0) {
       try {
         console.log('📧 posting to BlueSky', currentTimestampId)
-        const text = truncate(removeHtmlTags(item.object.content), currentTimestampId);
+        const textParts = splitText(removeHtmlTags(item.object.content), 300);
 
         const images = item.attachment
           .filter(attachment => attachment.type === 'Document' && attachment.mediaType.startsWith('image/'))
           .map(({name: alt, url}) => ({ alt, url }));
-        postToBluesky(text, images);
+        postToBluesky(textParts, images);
 
         if (currentTimestampId > newTimestampId) {
           newTimestampId = currentTimestampId;
