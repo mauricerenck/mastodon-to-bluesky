@@ -8,170 +8,178 @@ const axios = require("axios");
 const mastodonInstance = process.env.MASTODON_INSTANCE;
 const mastodonUser = process.env.MASTODON_USER;
 
-// Bluesky agent
-const agent = new BskyAgent({ service: process.env.BLUESKY_ENDPOINT });
-await agent.login({
-  identifier: process.env.BLUESKY_HANDLE,
-  password: process.env.BLUESKY_PASSWORD,
-});
-
-// File to store the last processed Mastodon post ID
-const lastProcessedPostIdFile = path.join(
-  __dirname,
-  "data",
-  "lastProcessedPostId.txt"
-);
-
-// Variable to store the last processed Mastodon post ID
-let lastProcessedPostId = loadLastProcessedPostId();
-
-// Function to load the last processed post ID from the file
-function loadLastProcessedPostId() {
-  try {
-    return fs.readFileSync(lastProcessedPostIdFile, "utf8").trim();
-  } catch (error) {
-    console.error("Error loading last processed post ID:", error);
-    return null;
-  }
-}
-
-// Function to save the last processed post ID to the file
-function saveLastProcessedPostId() {
-  try {
-    fs.writeFileSync(lastProcessedPostIdFile, `${lastProcessedPostId}`);
-  } catch (error) {
-    console.error("Error saving last processed post ID:", error);
-  }
-}
-
-async function createBlueskyMessage(text) {
-  const richText = new RichText({ text });
-  await richText.detectFacets(agent);
-
-  return {
-    text: richText.text,
-    facets: richText.facets
-  };
-}
-
-async function postToBluesky(textParts, images) {
-  const blueSkyImages = await images.reduce(async (list, {url, alt}) => {
-    const imageResponse = await axios.get({ 
-      url, 
-      method: 'GET',
-      responseType: 'blob',
-     });
-
-     const uploadResponse = await agent.uploadBlob(imageResponse.data);
-
-     return [
-      ...list, 
-      {
-        alt,
-        image: uploadResponse.blob, 
-      }
-    ];
-  }, []);
-
-  const rootMessageResponse = await agent.post({
-    ...(await createBlueskyMessage(textParts[0])),
-    ...(blueSkyImages.length > 0
-      ? {
-        embed: {
-          type: 'app.bsky.embed.images',
-          images: blueSkyImages,
-        }
-      }
-      : {}
-    ),
+async function main() {
+  // Bluesky agent
+  const agent = new BskyAgent({ service: process.env.BLUESKY_ENDPOINT });
+  const loginResponse = await agent.login({
+    identifier: process.env.BLUESKY_HANDLE,
+    password: process.env.BLUESKY_PASSWORD,
   });
+  if (!loginResponse.success) console.error("🔒 login failed");
 
-  if (textParts.length === 1) return;
-
-  let replyMessageResponse = null
-  for (let index = 1; index < textParts.length; index++) {
-    replyMessageResponse = await agent.post({
-      ...(await createBlueskyMessage(textParts[index])),
-      reply: {
-        root: rootMessageResponse,
-        parent: replyMessageResponse ?? rootMessageResponse,
-      }
-    });
-  }  
-}
-
-function removeHtmlTags(input) {
-  return input.replace(/<[^>]*>/g, "");
-}
-
-function splitText(text, maxLength) {
-  // Split the text by spaces
-  const words = text.split(" ");
-
-  let result = [];
-  let currentChunk = "";
-
-  for (const word of words) {
-      // Add the current word to the current chunk
-      const potentialChunk = `${currentChunk} ${word}`.trim();
-
-      if (potentialChunk.length <= maxLength) {
-          // If the current chunk is still under max length, add the word
-          currentChunk = potentialChunk;
-      } else {
-          // Otherwise, add the current chunk to the result and start a new chunk
-          result.push(currentChunk);
-          currentChunk = word;
-      }
-  }
-
-  // Add the last chunk to the result
-  result.push(currentChunk);
-
-  return result;
-}
-
-// Function to periodically fetch new Mastodon posts
-async function fetchNewPosts() {
-  const response = await axios.get(
-    `${mastodonInstance}/users/${mastodonUser}/outbox?page=true`
+  // File to store the last processed Mastodon post ID
+  const lastProcessedPostIdFile = path.join(
+    __dirname,
+    "data",
+    "lastProcessedPostId.txt"
   );
 
-  const reversed = response.data.orderedItems
-    .filter((item) => item.object.type === "Note")
-    .filter((item) => item.object.inReplyTo === null)
-    .reverse();
+  // Variable to store the last processed Mastodon post ID
+  let lastProcessedPostId = loadLastProcessedPostId();
 
-  let newTimestampId = 0;
-
-  reversed.forEach((item) => {
-    const currentTimestampId = Date.parse(item.published);
-
-    if (currentTimestampId > lastProcessedPostId && lastProcessedPostId != 0) {
-      try {
-        console.log('📧 posting to BlueSky', currentTimestampId)
-        const textParts = splitText(removeHtmlTags(item.object.content), 300);
-
-        const images = item.attachment
-          .filter(attachment => attachment.type === 'Document' && attachment.mediaType.startsWith('image/'))
-          .map(({name: alt, url}) => ({ alt, url }));
-        postToBluesky(textParts, images);
-
-        if (currentTimestampId > newTimestampId) {
-          newTimestampId = currentTimestampId;
-        }
-      } catch (error) {
-        console.error('🔥 can\'t post to Bluesky', currentTimestampId, error)
-      }
+  // Function to load the last processed post ID from the file
+  function loadLastProcessedPostId() {
+    try {
+      return fs.readFileSync(lastProcessedPostIdFile, "utf8").trim();
+    } catch (error) {
+      console.error("Error loading last processed post ID:", error);
+      return null;
     }
-  });
-
-  if (newTimestampId > 0) {
-    lastProcessedPostId = newTimestampId;
-    saveLastProcessedPostId();
   }
+
+  // Function to save the last processed post ID to the file
+  function saveLastProcessedPostId() {
+    try {
+      fs.writeFileSync(lastProcessedPostIdFile, `${lastProcessedPostId}`);
+    } catch (error) {
+      console.error("Error saving last processed post ID:", error);
+    }
+  }
+
+  async function createBlueskyMessage(text) {
+    const richText = new RichText({ text });
+    await richText.detectFacets(agent);
+
+    return {
+      text: richText.text,
+      facets: richText.facets
+    };
+  }
+
+  async function postToBluesky(textParts, images) {
+    const blueSkyImages = []
+    /*const blueSkyImages = await images.reduce(async (list, {url, alt}) => {
+      const {data: imageData} = await axios.get(url, {
+        responseType: 'arraybuffer',
+      });
+      //const base64Data = Buffer.from(imageData, 'binary').toString('base64')
+      console.log('🐈', url)
+
+      // new Uint8Array(imageData), {encoding: 'utf8'}
+      const {data} = await agent.uploadBlob(url);
+
+      return [
+        ...list, 
+        {
+          alt,
+          image: data.blob, 
+        }
+      ];
+    }, []);*/
+
+    const rootMessageResponse = await agent.post({
+      ...(await createBlueskyMessage(textParts[0])),
+      ...(blueSkyImages.length > 0
+        ? {
+          embed: {
+            type: 'app.bsky.embed.images',
+            images: blueSkyImages,
+          }
+        }
+        : {}
+      ),
+    });
+
+    if (textParts.length === 1) return;
+
+    let replyMessageResponse = null
+    for (let index = 1; index < textParts.length; index++) {
+      replyMessageResponse = await agent.post({
+        ...(await createBlueskyMessage(textParts[index])),
+        reply: {
+          root: rootMessageResponse,
+          parent: replyMessageResponse ?? rootMessageResponse,
+        }
+      });
+    }  
+  }
+
+  function removeHtmlTags(input) {
+    return input.replace(/<[^>]*>/g, "");
+  }
+
+  function splitText(text, maxLength) {
+    // Split the text by spaces
+    const words = text.split(" ");
+
+    let result = [];
+    let currentChunk = "";
+
+    for (const word of words) {
+        // Add the current word to the current chunk
+        const potentialChunk = `${currentChunk} ${word}`.trim();
+
+        if (potentialChunk.length <= maxLength) {
+            // If the current chunk is still under max length, add the word
+            currentChunk = potentialChunk;
+        } else {
+            // Otherwise, add the current chunk to the result and start a new chunk
+            result.push(currentChunk);
+            currentChunk = word;
+        }
+    }
+
+    // Add the last chunk to the result
+    result.push(currentChunk);
+
+    return result;
+  }
+
+  // Function to periodically fetch new Mastodon posts
+  async function fetchNewPosts() {
+    const response = await axios.get(
+      `${mastodonInstance}/users/${mastodonUser}/outbox?page=true`
+    );
+
+    const reversed = response.data.orderedItems
+      .filter((item) => item.object.type === "Note")
+      .filter((item) => item.object.inReplyTo === null)
+      .reverse();
+
+    let newTimestampId = 0;
+
+    reversed.forEach((item) => {
+      const currentTimestampId = Date.parse(item.published);
+
+      if (currentTimestampId > newTimestampId) {
+        newTimestampId = currentTimestampId;
+      }
+
+      if (currentTimestampId > lastProcessedPostId && lastProcessedPostId != 0) {
+        try {
+          console.log('📧 posting to BlueSky', currentTimestampId)
+          const textParts = splitText(removeHtmlTags(item.object.content), 300);
+
+          const images = item.object.attachment
+            .filter(attachment => attachment.type === 'Document' && attachment.mediaType.startsWith('image/'))
+            .map(({name: alt, url}) => ({ alt, url }));
+
+          postToBluesky(textParts, images);
+        } catch (error) {
+          console.error('🔥 can\'t post to Bluesky', currentTimestampId, error)
+        }
+      }
+    });
+
+    if (newTimestampId > 0) {
+      lastProcessedPostId = newTimestampId;
+      saveLastProcessedPostId();
+    }
+  }
+
+  fetchNewPosts();
+  // Fetch new posts every 5 minutes (adjust as needed)
+  setInterval(fetchNewPosts, (process.env.INTERVAL_MINUTES ?? 5) * 60 * 1000);
 }
 
-fetchNewPosts();
-// Fetch new posts every 5 minutes (adjust as needed)
-setInterval(fetchNewPosts, (process.env.INTERVAL_MINUTES ?? 5) * 60 * 1000);
+main()
