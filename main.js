@@ -56,39 +56,8 @@ async function main() {
     };
   }
 
-  async function postToBluesky(textParts, images) {
-    const blueSkyImages = []
-    /*const blueSkyImages = await images.reduce(async (list, {url, alt}) => {
-      const {data: imageData} = await axios.get(url, {
-        responseType: 'arraybuffer',
-      });
-      //const base64Data = Buffer.from(imageData, 'binary').toString('base64')
-      console.log('🐈', url)
-
-      // new Uint8Array(imageData), {encoding: 'utf8'}
-      const {data} = await agent.uploadBlob(url);
-
-      return [
-        ...list, 
-        {
-          alt,
-          image: data.blob, 
-        }
-      ];
-    }, []);*/
-
-    const rootMessageResponse = await agent.post({
-      ...(await createBlueskyMessage(textParts[0])),
-      ...(blueSkyImages.length > 0
-        ? {
-          embed: {
-            type: 'app.bsky.embed.images',
-            images: blueSkyImages,
-          }
-        }
-        : {}
-      ),
-    });
+  async function postToBluesky(textParts) {
+    const rootMessageResponse = await agent.post(await createBlueskyMessage(textParts[0]));
 
     if (textParts.length === 1) return;
 
@@ -159,12 +128,7 @@ async function main() {
         try {
           console.log('📧 posting to BlueSky', currentTimestampId)
           const textParts = splitText(removeHtmlTags(item.object.content), 300);
-
-          const images = item.object.attachment
-            .filter(attachment => attachment.type === 'Document' && attachment.mediaType.startsWith('image/'))
-            .map(({name: alt, url}) => ({ alt, url }));
-
-          postToBluesky(textParts, images);
+          postToBluesky(textParts);
         } catch (error) {
           console.error('🔥 can\'t post to Bluesky', currentTimestampId, error)
         }
