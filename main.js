@@ -83,15 +83,15 @@ async function fetchNewPosts() {
   reversed.forEach((item) => {
     const currentTimestampId = Date.parse(item.published);
 
+    if (currentTimestampId > newTimestampId) {
+      newTimestampId = currentTimestampId;
+    }
+    
     if (currentTimestampId > lastProcessedPostId && lastProcessedPostId != 0) {
       try {
         console.log('📧 posting to BlueSky', currentTimestampId)
         const text = truncate(removeHtmlTags(item.object.content), currentTimestampId);
         postToBluesky(text);
-
-        if (currentTimestampId > newTimestampId) {
-          newTimestampId = currentTimestampId;
-        }
       } catch (error) {
         console.error('🔥 can\'t post to Bluesky', currentTimestampId, error)
       }
