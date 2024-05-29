@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/mauricerenck/mastodon-to-bluesky/compare/v1.1.1...v1.2.0) (2024-05-29)
+
+
+### Features
+
+* split long posts into replies ([#10](https://github.com/mauricerenck/mastodon-to-bluesky/issues/10)) ([b093c7d](https://github.com/mauricerenck/mastodon-to-bluesky/commit/b093c7d5fc6383da19c6434f57037e014da822de))
+
 ## [1.1.1](https://github.com/mauricerenck/mastodon-to-bluesky/compare/v1.1.0...v1.1.1) (2024-04-24)
 
 
