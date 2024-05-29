@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/mauricerenck/mastodon-to-bluesky/compare/v1.1.0...v1.1.1) (2024-04-24)
+
+
+### Bug Fixes
+
+* updating newTimestampId correctly ([0b753d2](https://github.com/mauricerenck/mastodon-to-bluesky/commit/0b753d234caff870e7a5fcb5b4bc4fac1a2e1acf))
+
 # [1.1.0](https://github.com/mauricerenck/mastodon-to-bluesky/compare/v1.0.0...v1.1.0) (2024-04-03)
 
 
