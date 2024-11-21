@@ -9,7 +9,7 @@
   "author": "Maurice Renck <hello@maurice-renck.de>",
   "license": "MIT",
   "dependencies": {
-    "@atproto/api": "^0.12.2",
+    "@atproto/api": "^0.13.0",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
     "axios": "^1.6.8",
