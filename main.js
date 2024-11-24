@@ -56,21 +56,32 @@ async function main() {
     };
   }
 
-  async function postToBluesky(textParts) {
-    const rootMessageResponse = await agent.post(await createBlueskyMessage(textParts[0]));
+  async function postToBluesky(textParts, blueskyThread) {
+    let blueskyMessage = await createBlueskyMessage(textParts[0]);
+    if (blueskyThread.length > 0) {
+      blueskyMessage = {
+        ...blueskyMessage,
+        reply: {
+          root: blueskyThread[0],
+          parent: blueskyThread[blueskyThread.length - 1]
+        }
+      };
+    }
+    const rootMessageResponse = await agent.post(blueskyMessage);
 
-    if (textParts.length === 1) return;
+    if (textParts.length === 1) return rootMessageResponse;
 
     let replyMessageResponse = null
     for (let index = 1; index < textParts.length; index++) {
       replyMessageResponse = await agent.post({
         ...(await createBlueskyMessage(textParts[index])),
         reply: {
-          root: rootMessageResponse,
+          root: blueskyThread.length > 0 ? blueskyThread[0] : rootMessageResponse,
           parent: replyMessageResponse ?? rootMessageResponse,
         }
       });
     }  
+    return replyMessageResponse;
   }
 
   function removeHtmlTags(input) {
@@ -112,12 +123,18 @@ async function main() {
 
     const reversed = response.data.orderedItems
       .filter((item) => item.object.type === "Note")
-      .filter((item) => item.object.inReplyTo === null)
+      .filter((item) => item.object.inReplyTo === null || item.object.inReplyTo.startsWith(`${mastodonInstance}/users/${mastodonUser}/statuses/`))
       .reverse();
+
+    const withThreads = reversed.filter((item, i) => item.object.inReplyTo === null || (i > 0 && item.object.inReplyTo === reversed[i - 1].object.id));
 
     let newTimestampId = 0;
 
-    reversed.forEach((item) => {
+    let item = null;
+    let blueskyThread = [];
+    let lastBlueskyPost = null;
+    for (let index = 0; index < withThreads.length; index++) {
+      item = withThreads[index];
       const currentTimestampId = Date.parse(item.published);
 
       if (currentTimestampId > newTimestampId) {
@@ -128,12 +145,17 @@ async function main() {
         try {
           console.log('📧 posting to BlueSky', currentTimestampId)
           const textParts = splitText(removeHtmlTags(item.object.content), 300);
-          postToBluesky(textParts);
+          if(item.object.inReplyTo !== null) {
+            blueskyThread.push(lastBlueskyPost);
+          } else {
+            blueskyThread = [];
+          }
+          lastBlueskyPost = await postToBluesky(textParts, blueskyThread);
         } catch (error) {
           console.error('🔥 can\'t post to Bluesky', currentTimestampId, error)
         }
       }
-    });
+    }
 
     if (newTimestampId > 0) {
       lastProcessedPostId = newTimestampId;
