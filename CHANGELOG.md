@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/mauricerenck/mastodon-to-bluesky/compare/v1.2.0...v1.2.1) (2024-11-30)
+
+
+### Bug Fixes
+
+* line breaks and quotes ([a8445e9](https://github.com/mauricerenck/mastodon-to-bluesky/commit/a8445e942bfa0e6e856118fc512e2abb81049acf)), closes [#12](https://github.com/mauricerenck/mastodon-to-bluesky/issues/12)
+
 # [1.2.0](https://github.com/mauricerenck/mastodon-to-bluesky/compare/v1.1.1...v1.2.0) (2024-05-29)
 
 
