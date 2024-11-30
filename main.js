@@ -1,5 +1,6 @@
 require("dotenv").config();
 const fs = require("fs");
+const he = require("he");
 const path = require("path");
 const { RichText, AtpAgent } = require("@atproto/api");
 const axios = require("axios");
@@ -74,8 +75,13 @@ async function main() {
         }
     }
 
-    function removeHtmlTags(input) {
-        return input.replace(/<[^>]*>/g, "");
+    function sanitizeHtml(input) {
+      const withLinebreaks = input.replace(/<br \/>/g, '\r\n').replace(/<\/p>/g, '\r\n\n').replace(/<p>/g, '');
+      const withoutHtml = withLinebreaks.replace(/<[^>]*>/g, "");
+      const decodeQuotes = he.decode(withoutHtml);
+      const addSpace = decodeQuotes.replace(/(https?:\/\/)/g, ' $1');
+
+      return addSpace;
     }
 
     function splitText(text, maxLength) {
@@ -126,7 +132,7 @@ async function main() {
             if (currentTimestampId > lastProcessedPostId && lastProcessedPostId != 0) {
                 try {
                     console.log("📧 posting to BlueSky", currentTimestampId);
-                    const textParts = splitText(removeHtmlTags(item.object.content), 300);
+                    const textParts = splitText(sanitizeHtml(item.object.content), 300);
                     postToBluesky(textParts);
                 } catch (error) {
                     console.error("🔥 can't post to Bluesky", currentTimestampId, error);
@@ -136,7 +142,7 @@ async function main() {
 
         if (newTimestampId > 0) {
             lastProcessedPostId = newTimestampId;
-            saveLastProcessedPostId();
+           saveLastProcessedPostId();
         }
     }
 
