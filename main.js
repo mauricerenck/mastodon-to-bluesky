@@ -4,10 +4,7 @@ const he = require("he");
 const path = require("path");
 const { RichText, AtpAgent } = require("@atproto/api");
 const axios = require("axios");
-
-// Mastodon credentials
-const mastodonInstance = process.env.MASTODON_INSTANCE;
-const mastodonUser = process.env.MASTODON_USER;
+const { DOMParser } = require("xmldom");
 
 async function main() {
     // Bluesky agent
@@ -76,12 +73,15 @@ async function main() {
     }
 
     function sanitizeHtml(input) {
-      const withLinebreaks = input.replace(/<br \/>/g, '\r\n').replace(/<\/p>/g, '\r\n\n').replace(/<p>/g, '');
-      const withoutHtml = withLinebreaks.replace(/<[^>]*>/g, "");
-      const decodeQuotes = he.decode(withoutHtml);
-      const addSpace = decodeQuotes.replace(/(https?:\/\/)/g, ' $1');
+        const withLinebreaks = input
+            .replace(/<br \/>/g, "\r\n")
+            .replace(/<\/p>/g, "\r\n\n")
+            .replace(/<p>/g, "");
+        const withoutHtml = withLinebreaks.replace(/<[^>]*>/g, "");
+        const decodeQuotes = he.decode(withoutHtml);
+        const addSpace = decodeQuotes.replace(/(https?:\/\/)/g, " $1");
 
-      return addSpace;
+        return addSpace;
     }
 
     function splitText(text, maxLength) {
@@ -112,43 +112,59 @@ async function main() {
     }
 
     // Function to periodically fetch new Mastodon posts
-    async function fetchNewPosts() {
-        const response = await axios.get(`${mastodonInstance}/users/${mastodonUser}/outbox?page=true`);
+    async function fetchNewToots() {
+        const rssFeedURL = `${process.env.MASTODON_INSTANCE}/users/${process.env.MASTODON_USER}.rss`;
 
-        const reversed = response.data.orderedItems
-            .filter((item) => item.object.type === "Note")
-            .filter((item) => item.object.inReplyTo === null)
-            .reverse();
+        try {
+            const response = await axios.get(rssFeedURL);
+            const xmlData = response.data;
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(xmlData, "application/xml");
+            const items = doc.getElementsByTagName("item");
 
-        let newTimestampId = 0;
+            let newTimestampId = 0;
 
-        reversed.forEach((item) => {
-            const currentTimestampId = Date.parse(item.published);
+            for (let i = items.length - 1; i >= 0; i--) {
+                const item = items[i];
 
-            if (currentTimestampId > newTimestampId) {
-                newTimestampId = currentTimestampId;
-            }
+                const currentTimestampId = Date.parse(
+                    item.getElementsByTagName("pubDate")[0].textContent.split(",").pop()
+                );
 
-            if (currentTimestampId > lastProcessedPostId && lastProcessedPostId != 0) {
-                try {
-                    console.log("📧 posting to BlueSky", currentTimestampId);
-                    const textParts = splitText(sanitizeHtml(item.object.content), 300);
-                    postToBluesky(textParts);
-                } catch (error) {
-                    console.error("🔥 can't post to Bluesky", currentTimestampId, error);
+                if (currentTimestampId > newTimestampId) {
+                    newTimestampId = currentTimestampId;
+                }
+
+                if (currentTimestampId > lastProcessedPostId && lastProcessedPostId != 0) {
+                    try {
+                        console.log("📧 posting to BlueSky", currentTimestampId);
+
+                        const id = item.getElementsByTagName("guid")[0].textContent.split("/").pop();
+                        const rawContent = item.getElementsByTagName("description")[0].textContent;
+                        const contentParts = splitText(sanitizeHtml(rawContent), 300);
+
+                        //postToBluesky(textParts);
+                        console.log("🦒", id, currentTimestampId, contentParts);
+                    } catch (error) {
+                        console.error("🔥 can't post to Bluesky", currentTimestampId, error);
+                    }
                 }
             }
-        });
 
-        if (newTimestampId > 0) {
-            lastProcessedPostId = newTimestampId;
-           saveLastProcessedPostId();
+            if (newTimestampId > 0) {
+                lastProcessedPostId = newTimestampId;
+                saveLastProcessedPostId();
+            }
+        } catch (e) {
+            console.log(`getting toots for ${process.env.MASTODON_USER} returned an error`);
+            return "";
         }
     }
 
-    fetchNewPosts();
+    fetchNewToots();
+
     // Fetch new posts every 5 minutes (adjust as needed)
-    setInterval(fetchNewPosts, (process.env.INTERVAL_MINUTES ?? 5) * 60 * 1000);
+    //setInterval(fetchNewToots, (process.env.INTERVAL_MINUTES ?? 5) * 60 * 1000);
 }
 
 main();
