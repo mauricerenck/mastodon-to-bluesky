@@ -45,7 +45,7 @@ async function main() {
         }
     }
 
-    async function createBlueskyMessage(text) {
+    async function createBlueskyMessage(text, images) {
         const richText = new RichText({ text });
         await richText.detectFacets(agent);
 
@@ -55,15 +55,51 @@ async function main() {
         };
     }
 
-    async function postToBluesky(textParts) {
-        const rootMessageResponse = await agent.post(await createBlueskyMessage(textParts[0]));
+    async function urlToUint8Array(url) {
+        const response = await axios.get(url, { responseType: "arraybuffer" });
+        const arrayBuffer = response.data;
+        return new Uint8Array(arrayBuffer);
+    }
+
+    async function postToBluesky(textParts, attachments) {
+        const images = attachments.filter((attachment) => attachment.medium === "image");
+        //const videos = attachments.filter((attachment) => attachment.medium === "video");
+
+        // upload images first
+        for (let i = 0; i < images.length; i++) {
+            const image = images[i];
+
+            const imageContent = await urlToUint8Array(image.url);
+            const { data } = await agent.uploadBlob(imageContent, { encoding: image.mimeType });
+
+            images[i].blob = data.blob;
+        }
+
+        const rootMessage = await createBlueskyMessage(textParts[0]);
+        const embedPart =
+            images.length === 0
+                ? {}
+                : {
+                      embed: {
+                          images: images.map((image) => ({
+                              alt: image.altText,
+                              image: image.blob
+                          })),
+                          $type: "app.bsky.embed.images"
+                      }
+                  };
+        const rootMessageResponse = await agent.post({
+            ...rootMessage,
+            ...embedPart
+        });
 
         if (textParts.length === 1) return;
 
         let replyMessageResponse = null;
         for (let index = 1; index < textParts.length; index++) {
+            const replyMessage = await createBlueskyMessage(textParts[index]);
             replyMessageResponse = await agent.post({
-                ...(await createBlueskyMessage(textParts[index])),
+                ...replyMessage,
                 reply: {
                     root: rootMessageResponse,
                     parent: replyMessageResponse ?? rootMessageResponse
@@ -143,8 +179,29 @@ async function main() {
                         const rawContent = item.getElementsByTagName("description")[0].textContent;
                         const contentParts = splitText(sanitizeHtml(rawContent), 300);
 
-                        //postToBluesky(textParts);
-                        console.log("🦒", id, currentTimestampId, contentParts);
+                        // load attachments
+                        const mediaItems = item.getElementsByTagName("media:content");
+                        const attachments = Array.from(mediaItems).reduce((list, item) => {
+                            const url = item.getAttribute("url");
+                            const mimeType = item.getAttribute("type");
+                            const medium = item.getAttribute("medium"); // image or video
+                            const descriptionItems = item.getElementsByTagName("media:description");
+                            const altText = descriptionItems.length === 0 ? "" : descriptionItems[0].textContent;
+
+                            if (!["video", "image"].includes(medium)) return list;
+
+                            return [
+                                ...list,
+                                {
+                                    url,
+                                    altText,
+                                    mimeType,
+                                    medium
+                                }
+                            ];
+                        }, []);
+
+                        postToBluesky(contentParts, attachments);
                     } catch (error) {
                         console.error("🔥 can't post to Bluesky", currentTimestampId, error);
                     }
