@@ -1,10 +1,10 @@
-require("dotenv").config();
-const fs = require("fs");
-const he = require("he");
-const path = require("path");
-const { RichText, AtpAgent } = require("@atproto/api");
-const axios = require("axios");
-const { DOMParser } = require("xmldom");
+import "dotenv/config";
+import * as fs from "fs";
+import he from "he";
+import * as path from "path";
+import { RichText, AtpAgent } from "@atproto/api";
+import axios from "axios";
+import { DOMParser } from "xmldom";
 
 async function main() {
     // Bluesky agent
@@ -21,7 +21,7 @@ async function main() {
     }
 
     // File to store the last processed Mastodon post ID
-    const lastProcessedPostIdFile = path.join(__dirname, "data", "lastProcessedPostId.txt");
+    const lastProcessedPostIdFile = path.join(path.resolve(), "data", "lastProcessedPostId.txt");
 
     // Variable to store the last processed Mastodon post ID
     let lastProcessedPostId = loadLastProcessedPostId();
