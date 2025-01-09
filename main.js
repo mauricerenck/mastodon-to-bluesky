@@ -1,10 +1,15 @@
 import "dotenv/config";
-import * as fs from "fs";
-import he from "he";
-import * as path from "path";
 import { RichText, AtpAgent } from "@atproto/api";
 import axios from "axios";
 import { DOMParser } from "xmldom";
+import {
+    loadAttachments,
+    loadLastProcessedPostId,
+    sanitizeHtml,
+    saveLastProcessedPostId,
+    splitText,
+    urlToUint8Array
+} from "./utils.js";
 
 async function main() {
     // Bluesky agent
@@ -20,30 +25,8 @@ async function main() {
         return;
     }
 
-    // File to store the last processed Mastodon post ID
-    const lastProcessedPostIdFile = path.join(path.resolve(), "data", "lastProcessedPostId.txt");
-
     // Variable to store the last processed Mastodon post ID
     let lastProcessedPostId = loadLastProcessedPostId();
-
-    // Function to load the last processed post ID from the file
-    function loadLastProcessedPostId() {
-        try {
-            return fs.readFileSync(lastProcessedPostIdFile, "utf8").trim();
-        } catch (error) {
-            console.error("Error loading last processed post ID:", error);
-            return null;
-        }
-    }
-
-    // Function to save the last processed post ID to the file
-    function saveLastProcessedPostId() {
-        try {
-            fs.writeFileSync(lastProcessedPostIdFile, `${lastProcessedPostId}`);
-        } catch (error) {
-            console.error("Error saving last processed post ID:", error);
-        }
-    }
 
     async function createBlueskyMessage(text, images) {
         const richText = new RichText({ text });
@@ -53,12 +36,6 @@ async function main() {
             text: richText.text,
             facets: richText.facets
         };
-    }
-
-    async function urlToUint8Array(url) {
-        const response = await axios.get(url, { responseType: "arraybuffer" });
-        const arrayBuffer = response.data;
-        return new Uint8Array(arrayBuffer);
     }
 
     async function postToBluesky(textParts, attachments) {
@@ -108,45 +85,6 @@ async function main() {
         }
     }
 
-    function sanitizeHtml(input) {
-        const withLinebreaks = input
-            .replace(/<br \/>/g, "\r\n")
-            .replace(/<\/p>/g, "\r\n\n")
-            .replace(/<p>/g, "");
-        const withoutHtml = withLinebreaks.replace(/<[^>]*>/g, "");
-        const decodeQuotes = he.decode(withoutHtml);
-        const addSpace = decodeQuotes.replace(/(https?:\/\/)/g, " $1");
-
-        return addSpace;
-    }
-
-    function splitText(text, maxLength) {
-        // Split the text by spaces
-        const words = text.split(" ");
-
-        let result = [];
-        let currentChunk = "";
-
-        for (const word of words) {
-            // Add the current word to the current chunk
-            const potentialChunk = `${currentChunk} ${word}`.trim();
-
-            if (potentialChunk.length <= maxLength) {
-                // If the current chunk is still under max length, add the word
-                currentChunk = potentialChunk;
-            } else {
-                // Otherwise, add the current chunk to the result and start a new chunk
-                result.push(currentChunk);
-                currentChunk = word;
-            }
-        }
-
-        // Add the last chunk to the result
-        result.push(currentChunk);
-
-        return result;
-    }
-
     // Function to periodically fetch new Mastodon posts
     async function fetchNewToots() {
         const rssFeedURL = `${process.env.MASTODON_INSTANCE}/users/${process.env.MASTODON_USER}.rss`;
@@ -178,28 +116,7 @@ async function main() {
                         const id = item.getElementsByTagName("guid")[0].textContent.split("/").pop();
                         const rawContent = item.getElementsByTagName("description")[0].textContent;
                         const contentParts = splitText(sanitizeHtml(rawContent), 300);
-
-                        // load attachments
-                        const mediaItems = item.getElementsByTagName("media:content");
-                        const attachments = Array.from(mediaItems).reduce((list, item) => {
-                            const url = item.getAttribute("url");
-                            const mimeType = item.getAttribute("type");
-                            const medium = item.getAttribute("medium"); // image or video
-                            const descriptionItems = item.getElementsByTagName("media:description");
-                            const altText = descriptionItems.length === 0 ? "" : descriptionItems[0].textContent;
-
-                            if (!["video", "image"].includes(medium)) return list;
-
-                            return [
-                                ...list,
-                                {
-                                    url,
-                                    altText,
-                                    mimeType,
-                                    medium
-                                }
-                            ];
-                        }, []);
+                        const attachments = loadAttachments(item);
 
                         postToBluesky(contentParts, attachments);
                     } catch (error) {
@@ -210,7 +127,7 @@ async function main() {
 
             if (newTimestampId > 0) {
                 lastProcessedPostId = newTimestampId;
-                saveLastProcessedPostId();
+                saveLastProcessedPostId(lastProcessedPostId);
             }
         } catch (e) {
             console.log(`getting toots for ${process.env.MASTODON_USER} returned an error`);
