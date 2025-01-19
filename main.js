@@ -20,8 +20,8 @@ async function main() {
             password: process.env.BLUESKY_PASSWORD
         });
         if (!loginResponse.success) throw new Error("login failed");
-    } catch {
-        console.error("🔒 login failed");
+    } catch (error) {
+        console.error("🔒 login failed", error);
         return;
     }
 
@@ -138,7 +138,7 @@ async function main() {
     fetchNewToots();
 
     // Fetch new posts every 5 minutes (adjust as needed)
-    //setInterval(fetchNewToots, (process.env.INTERVAL_MINUTES ?? 5) * 60 * 1000);
+    setInterval(fetchNewToots, (process.env.INTERVAL_MINUTES ?? 5) * 60 * 1000);
 }
 
 main();
