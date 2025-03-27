@@ -10,11 +10,11 @@
   "author": "Maurice Renck <hello@maurice-renck.de>",
   "license": "MIT",
   "dependencies": {
-    "@atproto/api": "^0.13.0",
+    "@atproto/api": "^0.14.13",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
-    "axios": "^1.6.8",
-    "dotenv": "^16.4.5",
+    "axios": "^1.8.4",
+    "dotenv": "^16.4.7",
     "he": "^1.2.0",
     "xmldom": "^0.6.0"
   }
