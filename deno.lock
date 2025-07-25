@@ -1,0 +1,93 @@
+{
+  "version": "4",
+  "specifiers": {
+    "jsr:@std/assert@1": "1.0.13",
+    "jsr:@std/internal@^1.0.6": "1.0.6",
+    "npm:@atproto/api@~0.15.5": "0.15.5"
+  },
+  "jsr": {
+    "@std/assert@1.0.13": {
+      "integrity": "ae0d31e41919b12c656c742b22522c32fb26ed0cba32975cb0de2a273cb68b29",
+      "dependencies": [
+        "jsr:@std/internal"
+      ]
+    },
+    "@std/internal@1.0.6": {
+      "integrity": "9533b128f230f73bd209408bb07a4b12f8d4255ab2a4d22a1fd6d87304aca9a4"
+    }
+  },
+  "npm": {
+    "@atproto/api@0.15.5": {
+      "integrity": "sha512-GiKOrjSXMm8OSpc+pfjFTBYQGX62jmorECkTx2VZbS6KtFKFY0cRQAI+JnQoOLF/8TvzpaAZB7+it73uIqDM7A==",
+      "dependencies": [
+        "@atproto/common-web",
+        "@atproto/lexicon",
+        "@atproto/syntax",
+        "@atproto/xrpc",
+        "await-lock",
+        "multiformats",
+        "tlds",
+        "zod"
+      ]
+    },
+    "@atproto/common-web@0.4.1": {
+      "integrity": "sha512-Ghh+djHYMAUCktLKwr2IuGgtjcwSWGudp+K7+N7KBA9pDDloOXUEY8Agjc5SHSo9B1QIEFkegClU5n+apn2e0w==",
+      "dependencies": [
+        "graphemer",
+        "multiformats",
+        "uint8arrays",
+        "zod"
+      ]
+    },
+    "@atproto/lexicon@0.4.10": {
+      "integrity": "sha512-uDbP20vetBgtXPuxoyRcvOGBt2gNe1dFc9yYKcb6jWmXfseHiGTnIlORJOLBXIT2Pz15Eap4fLxAu6zFAykD5A==",
+      "dependencies": [
+        "@atproto/common-web",
+        "@atproto/syntax",
+        "iso-datestring-validator",
+        "multiformats",
+        "zod"
+      ]
+    },
+    "@atproto/syntax@0.4.0": {
+      "integrity": "sha512-b9y5ceHS8YKOfP3mdKmwAx5yVj9294UN7FG2XzP6V5aKUdFazEYRnR9m5n5ZQFKa3GNvz7de9guZCJ/sUTcOAA=="
+    },
+    "@atproto/xrpc@0.6.12": {
+      "integrity": "sha512-Ut3iISNLujlmY9Gu8sNU+SPDJDvqlVzWddU8qUr0Yae5oD4SguaUFjjhireMGhQ3M5E0KljQgDbTmnBo1kIZ3w==",
+      "dependencies": [
+        "@atproto/lexicon",
+        "zod"
+      ]
+    },
+    "await-lock@2.2.2": {
+      "integrity": "sha512-aDczADvlvTGajTDjcjpJMqRkOF6Qdz3YbPZm/PyW6tKPkx2hlYBzxMhEywM/tU72HrVZjgl5VCdRuMlA7pZ8Gw=="
+    },
+    "graphemer@1.4.0": {
+      "integrity": "sha512-EtKwoO6kxCL9WO5xipiHTZlSzBm7WLT627TqC/uVRd0HKmq8NXyebnNYxDoBi7wt8eTWrUrKXCOVaFq9x1kgag=="
+    },
+    "iso-datestring-validator@2.2.2": {
+      "integrity": "sha512-yLEMkBbLZTlVQqOnQ4FiMujR6T4DEcCb1xizmvXS+OxuhwcbtynoosRzdMA69zZCShCNAbi+gJ71FxZBBXx1SA=="
+    },
+    "multiformats@9.9.0": {
+      "integrity": "sha512-HoMUjhH9T8DDBNT+6xzkrd9ga/XiBI4xLr58LJACwK6G3HTOPeMz4nB4KJs33L2BelrIJa7P0VuNaVF3hMYfjg=="
+    },
+    "tlds@1.257.0": {
+      "integrity": "sha512-TZEScdurAjJDULiKMkr8Gvj+GqwcRQ1zPkbEFoo4Y6N5EgsyC6eEKe6xwbFtsrJPxAk8l/o5IPKzAqnrKD6tWg=="
+    },
+    "uint8arrays@3.0.0": {
+      "integrity": "sha512-HRCx0q6O9Bfbp+HHSfQQKD7wU70+lydKVt4EghkdOvlK/NlrF90z+eXV34mUd48rNvVJXwkrMSPpCATkct8fJA==",
+      "dependencies": [
+        "multiformats"
+      ]
+    },
+    "zod@3.24.3": {
+      "integrity": "sha512-HhY1oqzWCQWuUqvBFnsyrtZRhyPeR7SUGv+C4+MsisMuVfSPx8HpwWqH8tRahSlt6M3PiFAcoeFhZAqIXTxoSg=="
+    }
+  },
+  "workspace": {
+    "dependencies": [
+      "jsr:@std/assert@1",
+      "npm:@atproto/api@~0.15.5"
+    ]
+  }
+}
