@@ -4,16 +4,10 @@ import { DOMParser } from "xmldom";
 // Function to periodically fetch new Mastodon posts
 export const fetchNewToots = async (lastProcessedPostId: string) => {
     const instance = Deno.env.get("MASTODON_INSTANCE");
-    if (!instance) {
-        console.error("MASTODON_INSTANCE environment variable is not set.");
-        return;
-    }
+    if (!instance) throw new Error("MASTODON_INSTANCE environment variable is not set.");
 
     const mastodonUser = Deno.env.get("MASTODON_USER");
-    if (!mastodonUser) {
-        console.error("MASTODON_USER environment variable is not set.");
-        return;
-    }
+    if (!mastodonUser) throw new Error("MASTODON_USER environment variable is not set.");
 
     const rssFeedURL = `${instance}/users/${mastodonUser}.rss`;
 
