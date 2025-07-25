@@ -23,3 +23,13 @@ export async function loginToBluesky(): Promise<AtpAgent> {
         throw error;
     }
 }
+
+export const createBlueskyMessage = async (text, images) => {
+    const richText = new RichText({ text });
+    await richText.detectFacets(agent);
+
+    return {
+        text: richText.text,
+        facets: richText.facets
+    };
+};

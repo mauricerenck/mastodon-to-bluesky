@@ -2,8 +2,20 @@ import axios from "axios";
 import { DOMParser } from "xmldom";
 
 // Function to periodically fetch new Mastodon posts
-export const fetchNewToots = async () => {
-    const rssFeedURL = `${Deno.env.get("MASTODON_INSTANCE")}/users/${Deno.env.get("MASTODON_USER")}.rss`;
+export const fetchNewToots = async (lastProcessedPostId: string) => {
+    const instance = Deno.env.get("MASTODON_INSTANCE");
+    if (!instance) {
+        console.error("MASTODON_INSTANCE environment variable is not set.");
+        return;
+    }
+
+    const mastodonUser = Deno.env.get("MASTODON_USER");
+    if (!mastodonUser) {
+        console.error("MASTODON_USER environment variable is not set.");
+        return;
+    }
+
+    const rssFeedURL = `${instance}/users/${mastodonUser}.rss`;
 
     try {
         const response = await axios.get(rssFeedURL);
@@ -44,7 +56,7 @@ export const fetchNewToots = async () => {
             saveLastProcessedPostId(lastProcessedPostId);
         }
     } catch (e) {
-        console.log(`getting toots for ${process.env.MASTODON_USER} returned an error`);
+        console.log(`getting toots for ${mastodonUser} returned an error`);
         return "";
     }
 };

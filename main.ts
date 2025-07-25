@@ -1,4 +1,5 @@
 import { loginToBluesky } from "./bluesky.ts";
+import { fetchNewToots } from "./mastodon.ts";
 import { loadLastProcessedPostId } from "./utils.ts";
 
 if (!import.meta.main) {
@@ -17,16 +18,6 @@ try {
 
 // Variable to store the last processed Mastodon post ID
 let lastProcessedPostId = await loadLastProcessedPostId();
-
-async function createBlueskyMessage(text, images) {
-    const richText = new RichText({ text });
-    await richText.detectFacets(agent);
-
-    return {
-        text: richText.text,
-        facets: richText.facets
-    };
-}
 
 async function postToBluesky(textParts, attachments) {
     const images = attachments.filter((attachment) => attachment.medium === "image");
@@ -75,7 +66,10 @@ async function postToBluesky(textParts, attachments) {
     }
 }
 
-fetchNewToots();
+await fetchNewToots(lastProcessedPostId);
 
-// Fetch new posts every 5 minutes (adjust as needed)
-setInterval(fetchNewToots, (process.env.INTERVAL_MINUTES ?? 5) * 60 * 1000);
+const intervalMinutes = parseInt(Deno.env.get("INTERVAL_MINUTES") ?? "5");
+while (true) {
+    await new Promise((resolve) => setTimeout(resolve, intervalMinutes * 60 * 1000));
+    await fetchNewToots(lastProcessedPostId);
+}
