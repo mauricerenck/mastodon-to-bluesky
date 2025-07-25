@@ -1,18 +1,17 @@
-import * as fs from "fs";
-import * as path from "path";
 import he from "he";
 import axios from "axios";
 
 // File to store the last processed Mastodon post ID
-const lastProcessedPostIdFile = path.join(path.resolve(), "data", "lastProcessedPostId.txt");
+const lastProcessedPostIdFile = join(resolve(), "data", "lastProcessedPostId.txt");
 
 /**
  * Load the last processed post ID from the file
  * @returns
  */
-export const loadLastProcessedPostId = () => {
+export const loadLastProcessedPostId = async () => {
     try {
-        return fs.readFileSync(lastProcessedPostIdFile, "utf8").trim();
+        const value = await Deno.readTextFile(lastProcessedPostIdFile);
+        return value.trim();
     } catch (error) {
         console.error("Error loading last processed post ID:", error);
         return null;
@@ -24,7 +23,7 @@ export const loadLastProcessedPostId = () => {
  */
 export const saveLastProcessedPostId = (lastProcessedPostId) => {
     try {
-        fs.writeFileSync(lastProcessedPostIdFile, `${lastProcessedPostId}`);
+        writeTextFileSync(lastProcessedPostIdFile, `${lastProcessedPostId}`);
     } catch (error) {
         console.error("Error saving last processed post ID:", error);
     }
