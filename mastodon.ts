@@ -1,4 +1,3 @@
-import axios from "axios";
 import { DOMParser } from "xmldom";
 
 // Function to periodically fetch new Mastodon posts
@@ -12,8 +11,8 @@ export const fetchNewToots = async (lastProcessedPostId: string) => {
     const rssFeedURL = `${instance}/users/${mastodonUser}.rss`;
 
     try {
-        const response = await axios.get(rssFeedURL);
-        const xmlData = response.data;
+        const response = await fetch(rssFeedURL);
+        const xmlData = await response.text();
         const parser = new DOMParser();
         const doc = parser.parseFromString(xmlData, "application/xml");
         const items = doc.getElementsByTagName("item");

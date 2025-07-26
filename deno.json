@@ -9,7 +9,6 @@
     "@atproto/api": "npm:@atproto/api@^0.15.27",
     "@std/assert": "jsr:@std/assert@1",
     "he": "npm:he@^1.2.0",
-    "axios": "npm:axios@^1.11.0",
     "xmldom": "npm:xmldom@^0.6.0"
   }
 }
