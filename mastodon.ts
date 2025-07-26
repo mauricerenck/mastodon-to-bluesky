@@ -1,4 +1,4 @@
-import { DOMParser } from "xmldom";
+import type { Account, Status } from "./mastodonTypes.ts";
 
 // Function to periodically fetch new Mastodon posts
 export const fetchNewToots = async (lastProcessedPostId: string) => {
@@ -8,14 +8,15 @@ export const fetchNewToots = async (lastProcessedPostId: string) => {
     const mastodonUser = Deno.env.get("MASTODON_USER");
     if (!mastodonUser) throw new Error("MASTODON_USER environment variable is not set.");
 
-    const rssFeedURL = `${instance}/users/${mastodonUser}.rss`;
-
     try {
-        const response = await fetch(rssFeedURL);
-        const xmlData = await response.text();
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(xmlData, "application/xml");
-        const items = doc.getElementsByTagName("item");
+        const accountApiURL = `${instance}/api/v1/accounts/lookup?acct=${mastodonUser}`;
+        const response = await fetch(accountApiURL);
+        const account = (await response.json()) as Account;
+        const userId = account.id;
+
+        const statusApiUrl = `${instance}/api/v1/accounts/${userId}/statuses`;
+        const statusResponse = await fetch(statusApiUrl);
+        const statuses = (await response.json()) as Status[];
 
         let newTimestampId = 0;
 
