@@ -1,12 +1,11 @@
 import type { Account, Status } from "./mastodonTypes.ts";
-import { sanitizeHtml, saveLastProcessedPostId, splitText } from "./utils.ts";
 
 /**
  * periodically fetch new Mastodon posts
  * @param lastProcessedPostId
  * @returns
  */
-export const fetchNewToots = async (lastProcessedPostId: number) => {
+export const fetchNewToots = async () => {
     const instanceUrl = Deno.env.get("MASTODON_INSTANCE");
     if (!instanceUrl) throw new Error("MASTODON_INSTANCE environment variable is not set.");
 
@@ -16,63 +15,10 @@ export const fetchNewToots = async (lastProcessedPostId: number) => {
     try {
         const account = await getAccountByUsername(instanceUrl, mastodonUser);
         const statuses = await getStatuses(instanceUrl, account.id);
-
-        let newTimestampId = 0;
-
-        for (const status of statuses.reverse()) {
-            const currentTimestampId = Date.parse(status.created_at);
-            if (currentTimestampId > newTimestampId) {
-                newTimestampId = currentTimestampId;
-            }
-
-            if (currentTimestampId > lastProcessedPostId && lastProcessedPostId != 0) {
-                try {
-                    console.log("📧 posting to BlueSky", currentTimestampId);
-
-                    const contentParts = splitText(sanitizeHtml(status.content), 300);
-                    const attachments = loadAttachments(item);
-
-                    postToBluesky(contentParts, attachments);
-                } catch (error) {
-                    console.error("🔥 can't post to Bluesky", currentTimestampId, error);
-                }
-            }
-        }
-
-        /*
-        for (let i = items.length - 1; i >= 0; i--) {
-            const item = items[i];
-
-            const currentTimestampId = Date.parse(item.getElementsByTagName("pubDate")[0].textContent.split(",").pop());
-
-            if (currentTimestampId > newTimestampId) {
-                newTimestampId = currentTimestampId;
-            }
-
-            if (currentTimestampId > lastProcessedPostId && lastProcessedPostId != 0) {
-                try {
-                    console.log("📧 posting to BlueSky", currentTimestampId);
-
-                    const id = item.getElementsByTagName("guid")[0].textContent.split("/").pop();
-                    const rawContent = item.getElementsByTagName("description")[0].textContent;
-                    const contentParts = splitText(sanitizeHtml(rawContent), 300);
-                    const attachments = loadAttachments(item);
-
-                    postToBluesky(contentParts, attachments);
-                } catch (error) {
-                    console.error("🔥 can't post to Bluesky", currentTimestampId, error);
-                }
-            }
-        }
-        */
-
-        if (newTimestampId > 0) {
-            lastProcessedPostId = newTimestampId;
-            saveLastProcessedPostId(lastProcessedPostId);
-        }
+        return statuses;
     } catch (e) {
         console.log(`getting toots for ${mastodonUser} returned an error`);
-        return "";
+        throw e;
     }
 };
 

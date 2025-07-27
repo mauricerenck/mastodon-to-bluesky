@@ -1,6 +1,6 @@
-import { loginToBluesky } from "./bluesky.ts";
+import { createBlueskyMessage, loginToBluesky } from "./bluesky.ts";
 import { fetchNewToots } from "./mastodon.ts";
-import { loadLastProcessedPostId, urlToUint8Array } from "./utils.ts";
+import { loadLastProcessedPostId, saveLastProcessedPostId, urlToUint8Array } from "./utils.ts";
 
 if (!import.meta.main) {
     console.error("This script is intended to be run directly, not imported.");
@@ -10,7 +10,6 @@ if (!import.meta.main) {
 try {
     const agent = await loginToBluesky();
     console.log("🔒 Successfully logged in to Bluesky");
-    // You can now use the agent to interact with the Bluesky API
 } catch (error) {
     console.error("🔒 Error during login:", error);
     Deno.exit(1);
@@ -66,10 +65,35 @@ async function postToBluesky(textParts, attachments) {
     }
 }
 
-await fetchNewToots(lastProcessedPostId);
+const statuses = await fetchNewToots();
+
+let newTimestampId = 0;
+
+for (const status of statuses.reverse()) {
+    const currentTimestampId = Date.parse(status.created_at);
+    if (currentTimestampId > newTimestampId) newTimestampId = currentTimestampId;
+
+    if (currentTimestampId > lastProcessedPostId && lastProcessedPostId != 0) {
+        try {
+            console.log("📧 posting to BlueSky", currentTimestampId);
+
+            const contentParts = splitText(sanitizeHtml(status.content), 300);
+            const attachments = loadAttachments(item);
+
+            postToBluesky(contentParts, attachments);
+        } catch (error) {
+            console.error("🔥 can't post to Bluesky", currentTimestampId, error);
+        }
+    }
+}
+
+if (newTimestampId > 0) {
+    lastProcessedPostId = newTimestampId;
+    saveLastProcessedPostId(lastProcessedPostId);
+}
 
 const intervalMinutes = parseInt(Deno.env.get("INTERVAL_MINUTES") ?? "5");
 while (true) {
     await new Promise((resolve) => setTimeout(resolve, intervalMinutes * 60 * 1000));
-    await fetchNewToots(lastProcessedPostId);
+    await fetchNewToots();
 }
