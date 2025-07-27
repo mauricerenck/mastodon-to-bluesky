@@ -7,9 +7,9 @@ const lastProcessedPostIdFile = join(resolve(), "data", "lastProcessedPostId.txt
  * Load the last processed post ID from the file
  * @returns
  */
-export const loadLastProcessedPostId = async () => {
+export const loadLastProcessedPostId = async (): Promise<number> => {
     const value = await Deno.readTextFile(lastProcessedPostIdFile);
-    return value.trim();
+    return parseInt(value.trim(), 10);
 };
 
 /**

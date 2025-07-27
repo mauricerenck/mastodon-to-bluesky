@@ -5,7 +5,7 @@ import type { Account, Status } from "./mastodonTypes.ts";
  * @param lastProcessedPostId
  * @returns
  */
-export const fetchNewToots = async (lastProcessedPostId: string) => {
+export const fetchNewToots = async (lastProcessedPostId: number) => {
     const instanceUrl = Deno.env.get("MASTODON_INSTANCE");
     if (!instanceUrl) throw new Error("MASTODON_INSTANCE environment variable is not set.");
 
