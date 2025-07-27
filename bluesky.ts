@@ -12,11 +12,11 @@ export async function loginToBluesky(): Promise<AtpAgent> {
     if (!blueskyPassword) throw new Error("BLUESKY_PASSWORD");
 
     try {
-        const loginResponse = await agent.login({
+        const response = await agent.login({
             identifier: blueskyHandle,
             password: blueskyPassword
         });
-        if (!loginResponse.success) throw new Error("login failed");
+        if (!response.success) throw new Error("login failed");
         return agent;
     } catch (error) {
         console.error("🔒 Login to Bluesky failed:", error);
@@ -24,7 +24,7 @@ export async function loginToBluesky(): Promise<AtpAgent> {
     }
 }
 
-export const createBlueskyMessage = async (text, images) => {
+export const createBlueskyMessage = async (text: string, images) => {
     const richText = new RichText({ text });
     await richText.detectFacets(agent);
 
