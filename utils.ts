@@ -1,5 +1,4 @@
 import he from "he";
-import axios from "axios";
 
 // File to store the last processed Mastodon post ID
 const lastProcessedPostIdFile = join(resolve(), "data", "lastProcessedPostId.txt");

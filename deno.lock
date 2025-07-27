@@ -7,7 +7,6 @@
     "npm:@atproto/api@~0.15.27": "0.15.27",
     "npm:@semantic-release/changelog@^6.0.3": "6.0.3_semantic-release@24.2.7__marked@15.0.12",
     "npm:@semantic-release/git@^10.0.1": "10.0.1_semantic-release@24.2.7__marked@15.0.12",
-    "npm:axios@^1.11.0": "1.11.0",
     "npm:axios@^1.8.4": "1.11.0",
     "npm:dotenv@^16.4.7": "16.6.1",
     "npm:he@^1.2.0": "1.2.0",
@@ -3148,9 +3147,7 @@
     "dependencies": [
       "jsr:@std/assert@1",
       "npm:@atproto/api@~0.15.27",
-      "npm:axios@^1.11.0",
-      "npm:he@^1.2.0",
-      "npm:xmldom@0.6"
+      "npm:he@^1.2.0"
     ],
     "packageJson": {
       "dependencies": [
