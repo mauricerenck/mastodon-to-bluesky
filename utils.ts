@@ -1,4 +1,4 @@
-import he from "he";
+import { join, resolve } from "https://deno.land/std/path/mod.ts";
 
 // File to store the last processed Mastodon post ID
 const lastProcessedPostIdFile = join(resolve(), "data", "lastProcessedPostId.txt");
@@ -15,19 +15,19 @@ export const loadLastProcessedPostId = async (): Promise<number> => {
 /**
  * Save the last processed post ID to the file
  */
-export const saveLastProcessedPostId = (lastProcessedPostId) => {
+export const saveLastProcessedPostId = async (lastProcessedPostId: number) => {
     try {
-        writeTextFileSync(lastProcessedPostIdFile, `${lastProcessedPostId}`);
+        await Deno.writeTextFile(lastProcessedPostIdFile, `${lastProcessedPostId}`);
     } catch (error) {
         console.error("Error saving last processed post ID:", error);
     }
 };
 
-export const splitText = (text, maxLength) => {
+export const splitText = (text: string, maxLength: number) => {
     // Split the text by spaces
     const words = text.split(" ");
 
-    let result = [];
+    const result = [];
     let currentChunk = "";
 
     for (const word of words) {
@@ -50,7 +50,7 @@ export const splitText = (text, maxLength) => {
     return result;
 };
 
-export const sanitizeHtml = (input) => {
+export const sanitizeHtml = (input: string) => {
     const withLinebreaks = input
         .replace(/<br \/>/g, "\r\n")
         .replace(/<\/p>/g, "\r\n\n")
@@ -83,8 +83,8 @@ export const loadAttachments = (item) =>
         ];
     }, []);
 
-export const urlToUint8Array = async (url) => {
-    const response = await axios.get(url, { responseType: "arraybuffer" });
-    const arrayBuffer = response.data;
+export const urlToUint8Array = async (url: string) => {
+    const response = await fetch(url);
+    const arrayBuffer = await response.arrayBuffer();
     return new Uint8Array(arrayBuffer);
 };

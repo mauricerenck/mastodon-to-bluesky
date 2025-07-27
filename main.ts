@@ -1,6 +1,6 @@
 import { loginToBluesky } from "./bluesky.ts";
 import { fetchNewToots } from "./mastodon.ts";
-import { loadLastProcessedPostId } from "./utils.ts";
+import { loadLastProcessedPostId, urlToUint8Array } from "./utils.ts";
 
 if (!import.meta.main) {
     console.error("This script is intended to be run directly, not imported.");

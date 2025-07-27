@@ -1,4 +1,5 @@
 import type { Account, Status } from "./mastodonTypes.ts";
+import { sanitizeHtml, saveLastProcessedPostId, splitText } from "./utils.ts";
 
 /**
  * periodically fetch new Mastodon posts
@@ -18,7 +19,7 @@ export const fetchNewToots = async (lastProcessedPostId: number) => {
 
         let newTimestampId = 0;
 
-        for (const status of statuses) {
+        for (const status of statuses.reverse()) {
             const currentTimestampId = Date.parse(status.created_at);
             if (currentTimestampId > newTimestampId) {
                 newTimestampId = currentTimestampId;
@@ -28,9 +29,7 @@ export const fetchNewToots = async (lastProcessedPostId: number) => {
                 try {
                     console.log("📧 posting to BlueSky", currentTimestampId);
 
-                    const id = item.getElementsByTagName("guid")[0].textContent.split("/").pop();
-                    const rawContent = item.getElementsByTagName("description")[0].textContent;
-                    const contentParts = splitText(sanitizeHtml(rawContent), 300);
+                    const contentParts = splitText(sanitizeHtml(status.content), 300);
                     const attachments = loadAttachments(item);
 
                     postToBluesky(contentParts, attachments);
