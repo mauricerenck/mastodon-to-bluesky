@@ -1,4 +1,5 @@
 import { join, resolve } from "https://deno.land/std/path/mod.ts";
+import sanitize from "sanitize-html";
 import type { Status, Attachment } from "./mastodonTypes.ts";
 
 // File to store the last processed Mastodon post ID
@@ -57,7 +58,7 @@ export const sanitizeHtml = (input: string) => {
         .replace(/<\/p>/g, "\r\n\n")
         .replace(/<p>/g, "");
     const withoutHtml = withLinebreaks.replace(/<[^>]*>/g, "");
-    const decodeQuotes = he.decode(withoutHtml);
+    const decodeQuotes = sanitize(withoutHtml) as string;
     const addSpace = decodeQuotes.replace(/(https?:\/\/)/g, " $1");
 
     return addSpace;
