@@ -116,3 +116,9 @@ export interface Status {
     edited_at?: string | null;
     quote?: Status | null;
 }
+
+export type Attachment = {
+    url: string;
+    altText: string | null;
+    type: "image" | "video";
+};

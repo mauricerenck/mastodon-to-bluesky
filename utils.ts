@@ -1,4 +1,5 @@
 import { join, resolve } from "https://deno.land/std/path/mod.ts";
+import type { Status, Attachment } from "./mastodonTypes.ts";
 
 // File to store the last processed Mastodon post ID
 const lastProcessedPostIdFile = join(resolve(), "data", "lastProcessedPostId.txt");
@@ -62,26 +63,23 @@ export const sanitizeHtml = (input: string) => {
     return addSpace;
 };
 
-export const loadAttachments = (item) =>
-    Array.from(item.getElementsByTagName("media:content")).reduce((list, item) => {
-        const url = item.getAttribute("url");
-        const mimeType = item.getAttribute("type");
-        const medium = item.getAttribute("medium"); // image or video
-        const descriptionItems = item.getElementsByTagName("media:description");
-        const altText = descriptionItems.length === 0 ? "" : descriptionItems[0].textContent;
+export const loadAttachments = (status: Status) =>
+    status.media_attachments.reduce((list, attachment) => {
+        const url = attachment.url;
+        const type = attachment.type as "video" | "image";
+        const altText = attachment.description ?? null;
 
-        if (!["video", "image"].includes(medium)) return list;
+        if (!["video", "image"].includes(type)) return list;
 
         return [
             ...list,
             {
                 url,
                 altText,
-                mimeType,
-                medium
+                type
             }
         ];
-    }, []);
+    }, [] as Attachment[]);
 
 export const urlToUint8Array = async (url: string) => {
     const response = await fetch(url);

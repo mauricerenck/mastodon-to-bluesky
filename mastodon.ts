@@ -1,15 +1,15 @@
 import type { Account, Status } from "./mastodonTypes.ts";
 
+const instanceUrl = Deno.env.get("MASTODON_INSTANCE");
+const mastodonUser = Deno.env.get("MASTODON_USER");
+
 /**
  * periodically fetch new Mastodon posts
  * @param lastProcessedPostId
  * @returns
  */
 export const fetchNewToots = async () => {
-    const instanceUrl = Deno.env.get("MASTODON_INSTANCE");
     if (!instanceUrl) throw new Error("MASTODON_INSTANCE environment variable is not set.");
-
-    const mastodonUser = Deno.env.get("MASTODON_USER");
     if (!mastodonUser) throw new Error("MASTODON_USER environment variable is not set.");
 
     try {
