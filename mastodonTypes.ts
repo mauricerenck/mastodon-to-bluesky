@@ -1,3 +1,5 @@
+import { BlobRef } from "@atproto/api";
+
 export interface Account {
     id: string;
     username: string;
@@ -121,4 +123,5 @@ export type Attachment = {
     url: string;
     altText: string | null;
     type: "image" | "video";
+    blob?: BlobRef;
 };

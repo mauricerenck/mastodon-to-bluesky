@@ -1,4 +1,4 @@
-import { loginToBluesky, postToBluesky } from "./bluesky.ts";
+import { postToBluesky } from "./bluesky.ts";
 import { fetchNewToots } from "./mastodon.ts";
 import { loadAttachments, loadLastProcessedPostId, sanitizeHtml, saveLastProcessedPostId, splitText } from "./utils.ts";
 
@@ -12,8 +12,6 @@ const intervalMinutes = parseInt(Deno.env.get("INTERVAL_MINUTES") ?? "5");
 try {
     // Variable to store the last processed Mastodon post ID
     let lastProcessedPostId = await loadLastProcessedPostId();
-
-    const agent = await loginToBluesky();
 
     while (true) {
         const statuses = await fetchNewToots();
