@@ -3,8 +3,7 @@
   "specifiers": {
     "jsr:@std/assert@1": "1.0.13",
     "jsr:@std/internal@^1.0.6": "1.0.6",
-    "npm:@atproto/api@~0.15.27": "0.15.27",
-    "npm:@types/sanitize-html@^2.16.0": "2.16.0",
+    "npm:@atproto/api@~0.16.2": "0.16.2",
     "npm:sanitize-html@^2.17.0": "2.17.0"
   },
   "jsr": {
@@ -19,8 +18,8 @@
     }
   },
   "npm": {
-    "@atproto/api@0.15.27": {
-      "integrity": "sha512-ok/WGafh1nz4t8pEQGtAF/32x2E2VDWU4af6BajkO5Gky2jp2q6cv6aB2A5yuvNNcc3XkYMYipsqVHVwLPMF9g==",
+    "@atproto/api@0.16.2": {
+      "integrity": "sha512-sSTg31J8ws8DNaoiizp+/uJideRxRaJsq+Nyl8rnSxGw0w3oCvoeRU19iRWh2t0jZEmiRJAGkveGu23NKmPYEQ==",
       "dependencies": [
         "@atproto/common-web",
         "@atproto/lexicon",
@@ -66,12 +65,6 @@
     },
     "@pkgjs/parseargs@0.11.0": {
       "integrity": "sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg=="
-    },
-    "@types/sanitize-html@2.16.0": {
-      "integrity": "sha512-l6rX1MUXje5ztPT0cAFtUayXF06DqPhRyfVXareEN5gGCFaP/iwsxIyKODr9XDhfxPpN6vXUFNfo5kZMXCxBtw==",
-      "dependencies": [
-        "htmlparser2"
-      ]
     },
     "await-lock@2.2.2": {
       "integrity": "sha512-aDczADvlvTGajTDjcjpJMqRkOF6Qdz3YbPZm/PyW6tKPkx2hlYBzxMhEywM/tU72HrVZjgl5VCdRuMlA7pZ8Gw=="
@@ -352,8 +345,7 @@
   "workspace": {
     "dependencies": [
       "jsr:@std/assert@1",
-      "npm:@atproto/api@~0.15.27",
-      "npm:@types/sanitize-html@^2.16.0",
+      "npm:@atproto/api@~0.16.2",
       "npm:sanitize-html@^2.17.0"
     ]
   }
