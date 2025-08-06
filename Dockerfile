@@ -5,6 +5,7 @@ FROM denoland/deno:alpine-${DENO_VERSION}
 WORKDIR /app
 COPY . .
 
+RUN deno install
 RUN deno cache main.ts
 
 CMD [ "deno", "task", "run" ]
