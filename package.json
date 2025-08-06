@@ -1,0 +1,16 @@
+{
+  "name": "mastodon-to-bluesky",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Maurice Renck <hello@maurice-renck.de>",
+  "license": "MIT",
+  "dependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1"
+  }
+}
