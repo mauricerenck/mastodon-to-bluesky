@@ -78,7 +78,7 @@ export const loadAttachments = (status: Status) =>
                 url,
                 altText,
                 type
-            }
+            } as Attachment
         ];
     }, [] as Attachment[]);
 
