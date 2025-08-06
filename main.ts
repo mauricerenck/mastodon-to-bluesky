@@ -14,7 +14,8 @@ try {
     let lastProcessedPostId = await loadLastProcessedPostId();
 
     while (true) {
-        const statuses = await fetchNewToots();
+        const statuses = await fetchNewToots(lastProcessedPostId);
+        console.log("🦢", `load ${statuses.length} toots`);
 
         let newTimestampId = 0;
 

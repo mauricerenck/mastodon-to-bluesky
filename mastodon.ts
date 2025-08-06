@@ -13,11 +13,12 @@ const account = await getAccountByUsername(url, username);
  * @param lastProcessedPostId
  * @returns
  */
-export const fetchNewToots = async () => {
+export const fetchNewToots = async (lastProcessedPostId: number) => {
     try {
-        const statuses = await getStatuses(url, account.id);
-        console.log("🦢", `load ${statuses.length} toots`);
-        return statuses;
+        const allStatuses = await getStatuses(url, account.id);
+        if (lastProcessedPostId === 0) return allStatuses;
+
+        return findAfterDate(allStatuses, new Date(lastProcessedPostId));
     } catch (e) {
         console.log(`getting toots for ${username} returned an error`);
         throw e;
@@ -34,4 +35,22 @@ async function getStatuses(instanceUrl: string, accountId: string) {
     const statusApiUrl = `${instanceUrl}/api/v1/accounts/${accountId}/statuses`;
     const response = await fetch(statusApiUrl);
     return (await response.json()) as Status[];
+}
+
+function findAfterDate(sortedList: Status[], cutoff: Date) {
+    let low = 0;
+    let high = sortedList.length;
+
+    while (low < high) {
+        const mid = Math.floor((low + high) / 2);
+        const midDate = new Date(sortedList[mid].created_at);
+
+        if (midDate <= cutoff) {
+            low = mid + 1;
+        } else {
+            high = mid;
+        }
+    }
+
+    return sortedList.slice(low);
 }
