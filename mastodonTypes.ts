@@ -1,5 +1,7 @@
 import { BlobRef } from "@atproto/api";
 
+type Nullable<T> = null | T;
+
 export interface Account {
     id: string;
     username: string;
@@ -18,7 +20,7 @@ export interface Account {
     fields?: {
         name: string;
         value: string;
-        verified_at?: string | null;
+        verified_at?: Nullable<string>;
     }[];
 }
 
@@ -27,11 +29,11 @@ export interface MediaAttachment {
     type: string; // e.g. "image", "video", "audio", "gifv"
     url: string;
     preview_url: string;
-    remote_url?: string | null;
-    preview_remote_url?: string | null;
-    text_url?: string | null;
+    remote_url?: Nullable<string>;
+    preview_remote_url?: Nullable<string>;
+    text_url?: Nullable<string>;
     meta?: object;
-    description?: string | null;
+    description?: Nullable<string>;
 }
 
 export interface Mention {
@@ -55,7 +57,7 @@ export interface Emoji {
 
 export interface Application {
     name: string;
-    website?: string | null;
+    website?: Nullable<string>;
 }
 
 export interface PreviewCard {
@@ -80,7 +82,7 @@ export interface Poll {
     expires_at: string;
     expired: boolean;
     multiple: boolean;
-    votes_count?: number | null;
+    votes_count?: Nullable<number>;
     voted?: boolean;
     options: PollOption[];
 }
@@ -88,12 +90,12 @@ export interface Poll {
 export interface Status {
     id: string;
     created_at: string;
-    in_reply_to_id?: string | null;
-    in_reply_to_account_id?: string | null;
+    in_reply_to_id?: Nullable<string>;
+    in_reply_to_account_id?: Nullable<string>;
     sensitive: boolean;
     spoiler_text: string;
     visibility: "public" | "unlisted" | "private" | "direct";
-    language?: string | null;
+    language?: Nullable<string>;
     uri: string;
     url: string;
     replies_count: number;
@@ -105,23 +107,23 @@ export interface Status {
     bookmarked?: boolean;
     pinned?: boolean;
     content: string; // HTML
-    text?: string | null; // plain-text source
-    reblog?: Status | null; // nested original if boost/reblog
-    application?: Application | null;
+    text?: Nullable<string>; // plain-text source
+    reblog?: Nullable<Status>; // nested original if boost/reblog
+    application?: Nullable<Application>;
     account: Account;
     media_attachments: MediaAttachment[];
     mentions: Mention[];
     tags: Tag[];
     emojis: Emoji[];
-    card?: PreviewCard | null;
-    poll?: Poll | null;
-    edited_at?: string | null;
-    quote?: Status | null;
+    card?: Nullable<PreviewCard>;
+    poll?: Nullable<Poll>;
+    edited_at?: Nullable<string>;
+    quote?: Nullable<Status>;
 }
 
 export type Attachment = {
     url: string;
-    altText: string | null;
+    altText: Nullable<string>;
     type: "image" | "video";
     blob?: BlobRef;
 };
