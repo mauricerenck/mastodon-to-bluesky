@@ -78,10 +78,26 @@ jobs:
               with:
                   deno-version: ${{ steps.deno.outputs.DENO_VERSION }}
 
-            - name: Install
+            - name: Build binary
+              run: deno compile --allow-all --output dist/my-app main.ts
+
+            - name: Upload binary to GitHub Release (if tag exists)
+              if: startsWith(github.ref, 'refs/tags/')
+              uses: softprops/action-gh-release@v1
+              with:
+                  files: dist/my-app
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 24
+
+            - name: Install dependencies for semantic-release
               run: npm ci --ignore-scripts
 
-            - name: Release
+            - name: Run semantic-release
               env:
                   GITHUB_TOKEN: ${{ secrets.PAT_SEMANTIC_RELEASE }}
               run: npx semantic-release
