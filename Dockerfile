@@ -1,12 +1,10 @@
-ARG NODE_VERSION=20
+ARG DENO_VERSION=2.4.3
 
-FROM node:${NODE_VERSION}-bookworm-slim
+FROM denoland/deno:alpine-${DENO_VERSION}
 
-WORKDIR /usr/src/app
-
-COPY package*.json ./
-RUN npm install
-
+WORKDIR /app
 COPY . .
 
-CMD [ "node", "main.js" ]
+RUN deno cache main.ts
+
+CMD [ "deno", "task", "run" ]
