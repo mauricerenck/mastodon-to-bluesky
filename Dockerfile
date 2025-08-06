@@ -2,11 +2,9 @@ ARG DENO_VERSION=2.4.3
 
 FROM denoland/deno:alpine-${DENO_VERSION}
 
-WORKDIR /usr/src/app
-
-COPY deno.* ./
-RUN deno install
-
+WORKDIR /app
 COPY . .
 
-CMD [ "deno", "main.ts" ]
+RUN deno cache main.ts
+
+CMD [ "deno", "task", "run" ]
