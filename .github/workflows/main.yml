@@ -20,9 +20,9 @@ jobs:
             - name: Checkout repository
               uses: actions/checkout@v4
 
-            - name: Read .nvmrc
+            - name: Read .deno-version
+              id: deno
               run: echo "DENO_VERSION=$(cat .deno-version)" >> $GITHUB_OUTPUT
-              id: nvm
 
             - name: Login to container registry
               uses: docker/login-action@v3
@@ -56,7 +56,7 @@ jobs:
                   tags: ${{ steps.meta.outputs.tags }}
                   platforms: linux/amd64,linux/arm64
                   build-args: |
-                      DENO_VERSION=${{ steps.nvm.outputs.DENO_VERSION }}
+                      DENO_VERSION=${{ steps.deno.outputs.DENO_VERSION }}
 
     release:
         name: Release
@@ -69,14 +69,14 @@ jobs:
               with:
                   fetch-depth: 0
 
-            - name: Read .nvmrc
+            - name: Read Deno version
+              id: deno
               run: echo "DENO_VERSION=$(cat .deno-version)" >> $GITHUB_OUTPUT
-              id: nvm
 
-            - name: Setup Node
-              uses: actions/setup-node@v4
+            - name: Setup Deno
+              uses: denoland/setup-deno@v1
               with:
-                  node-version: ${{ steps.nvm.outputs.DENO_VERSION }}
+                  deno-version: ${{ steps.deno.outputs.DENO_VERSION }}
 
             - name: Install
               run: npm ci --ignore-scripts
