@@ -1,5 +1,6 @@
 {
   "version": "1.1.0",
+  "nodeModulesDir": "auto",
   "license": "MIT",
   "tasks": {
     "dev": "deno run --env-file --watch main.ts",
