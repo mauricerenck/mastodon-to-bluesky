@@ -54,7 +54,7 @@ jobs:
                   labels: ${{ steps.meta.outputs.labels }}
                   push: true
                   tags: ${{ steps.meta.outputs.tags }}
-                  platforms: linux/amd64,linux/arm64,linux/arm/v7
+                  platforms: linux/amd64,linux/arm64
                   build-args: |
                       DENO_VERSION=${{ steps.nvm.outputs.DENO_VERSION }}
 
