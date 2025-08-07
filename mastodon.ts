@@ -16,14 +16,15 @@ const account = await getAccountByUsername(url, username);
 export const fetchNewToots = async (lastProcessedPostId: number) => {
     try {
         const allStatuses = (await getStatuses(url, account.id)).filter(
-            // filter replies
-            (status) => status.in_reply_to_id === null && status.in_reply_to_account_id === null
+            // filter replies and reblogs
+            (status) =>
+                status.in_reply_to_id === null && status.in_reply_to_account_id === null && status.reblog === null
         );
 
         return lastProcessedPostId === 0 ? allStatuses : findAfterDate(allStatuses, new Date(lastProcessedPostId));
-    } catch (e) {
-        console.log(`getting toots for ${username} returned an error`);
-        throw e;
+    } catch (error) {
+        console.error(`getting toots for ${username} returned an error`, error);
+        throw error;
     }
 };
 
