@@ -21,7 +21,8 @@ export const fetchNewToots = async (lastProcessedPostId: number) => {
                 status.in_reply_to_id === null && status.in_reply_to_account_id === null && status.reblog === null
         );
 
-        return lastProcessedPostId === 0 ? allStatuses : findAfterDate(allStatuses, new Date(lastProcessedPostId));
+        //return lastProcessedPostId === 0 ? allStatuses : findAfterDate(allStatuses, new Date(lastProcessedPostId));
+        return allStatuses;
     } catch (error) {
         console.error(`getting toots for ${username} returned an error`, error);
         throw error;
