@@ -16,9 +16,8 @@ const account = await getAccountByUsername(url, username);
 export const fetchNewToots = async (lastProcessedPostId: number) => {
     try {
         const allStatuses = await getStatuses(url, account.id);
-        if (lastProcessedPostId === 0) return allStatuses;
 
-        return findAfterDate(allStatuses, new Date(lastProcessedPostId));
+        return lastProcessedPostId === 0 ? allStatuses : findAfterDate(allStatuses, new Date(lastProcessedPostId));
     } catch (e) {
         console.log(`getting toots for ${username} returned an error`);
         throw e;

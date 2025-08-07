@@ -8,10 +8,12 @@ if (!import.meta.main) {
 }
 
 const intervalMinutes = parseInt(Deno.env.get("INTERVAL_MINUTES") ?? "5");
+console.log("⏱️", `${intervalMinutes} minutes`);
 
 try {
     // Variable to store the last processed Mastodon post ID
     let lastProcessedPostId = await loadLastProcessedPostId();
+    console.log("📅", lastProcessedPostId);
 
     while (true) {
         const statuses = await fetchNewToots(lastProcessedPostId);
@@ -20,7 +22,9 @@ try {
         let newTimestampId = 0;
 
         for (const status of statuses.reverse()) {
-            const currentTimestampId = Date.parse(status.created_at);
+            const currentTimestampId = new Date(status.created_at).getTime();
+            console.log("🐛", status.created_at);
+
             if (currentTimestampId > newTimestampId) newTimestampId = currentTimestampId;
 
             if (currentTimestampId > lastProcessedPostId && lastProcessedPostId != 0) {
