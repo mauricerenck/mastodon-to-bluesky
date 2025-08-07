@@ -15,7 +15,10 @@ const account = await getAccountByUsername(url, username);
  */
 export const fetchNewToots = async (lastProcessedPostId: number) => {
     try {
-        const allStatuses = await getStatuses(url, account.id);
+        const allStatuses = (await getStatuses(url, account.id)).filter(
+            // filter replies
+            (status) => status.in_reply_to_id === null && status.in_reply_to_account_id === null
+        );
 
         return lastProcessedPostId === 0 ? allStatuses : findAfterDate(allStatuses, new Date(lastProcessedPostId));
     } catch (e) {
