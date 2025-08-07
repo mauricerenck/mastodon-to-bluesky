@@ -16,34 +16,44 @@ try {
     console.log("📅", lastProcessedPostId);
 
     while (true) {
-        const statuses = await fetchNewToots(lastProcessedPostId);
-        console.log("🦢", `load ${statuses.length} toots`);
+        try {
+            const statuses = await fetchNewToots(lastProcessedPostId);
+            console.log("🦢", `load ${statuses.length} toots`);
 
-        let newTimestampId = 0;
+            let newTimestampId = 0;
 
-        for (const status of statuses.reverse()) {
-            const currentTimestampId = new Date(status.created_at).getTime();
-            console.log("🐛", status.created_at);
+            for (const status of statuses.reverse()) {
+                const currentTimestampId = new Date(status.created_at).getTime();
+                console.log("🐛", status.created_at, currentTimestampId);
 
-            if (currentTimestampId > newTimestampId) newTimestampId = currentTimestampId;
+                if (currentTimestampId > newTimestampId) newTimestampId = currentTimestampId;
 
-            if (currentTimestampId > lastProcessedPostId && lastProcessedPostId != 0) {
-                try {
-                    console.log("📧 posting to BlueSky", currentTimestampId);
+                if (currentTimestampId > lastProcessedPostId && lastProcessedPostId != 0) {
+                    try {
+                        console.log("📧 posting to BlueSky", status.id, status.created_at);
 
-                    const contentParts = splitText(sanitizeHtml(status.content), 300);
-                    const attachments = loadAttachments(status);
+                        const contentParts = splitText(sanitizeHtml(status.content), 300);
+                        const attachments = loadAttachments(status);
 
-                    postToBluesky(contentParts, attachments);
-                } catch (error) {
-                    console.error("🔥 can't post to Bluesky", currentTimestampId, error);
+                        postToBluesky(contentParts, attachments);
+                    } catch (error) {
+                        console.error(
+                            "🔥 can't post to Bluesky",
+                            status.id,
+                            status.created_at,
+                            currentTimestampId,
+                            error
+                        );
+                    }
                 }
             }
-        }
 
-        if (newTimestampId > 0) {
-            lastProcessedPostId = newTimestampId;
-            saveLastProcessedPostId(lastProcessedPostId);
+            if (newTimestampId > 0) {
+                lastProcessedPostId = newTimestampId;
+                saveLastProcessedPostId(lastProcessedPostId);
+            }
+        } catch (error) {
+            console.error("🔥", error);
         }
 
         await new Promise((resolve) => setTimeout(resolve, intervalMinutes * 60 * 1000));
