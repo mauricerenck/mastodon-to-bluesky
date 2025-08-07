@@ -4,7 +4,8 @@
   "license": "MIT",
   "tasks": {
     "dev": "deno run --env-file --watch main.ts",
-    "run": "deno run --env-file --allow-env --allow-read --allow-write --allow-net main.ts"
+    "run": "deno run --env-file --allow-env --allow-read --allow-write --allow-net main.ts",
+    "docker-run": "deno run --allow-env --allow-read --allow-write --allow-net main.ts"
   },
   "imports": {
     "@atproto/api": "npm:@atproto/api@^0.16.2",

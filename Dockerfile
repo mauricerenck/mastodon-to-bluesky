@@ -8,4 +8,4 @@ COPY . .
 RUN deno install
 RUN deno cache main.ts
 
-CMD [ "deno", "task", "run" ]
+CMD [ "deno", "task", "docker-run" ]
