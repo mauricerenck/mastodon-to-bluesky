@@ -1,27 +1,27 @@
 {
   "version": "5",
   "specifiers": {
-    "jsr:@std/assert@^1.0.14": "1.0.14",
-    "jsr:@std/internal@^1.0.10": "1.0.10",
-    "npm:@atproto/api@0.17": "0.17.0",
+    "jsr:@std/assert@^1.0.15": "1.0.15",
+    "jsr:@std/internal@^1.0.12": "1.0.12",
+    "npm:@atproto/api@~0.17.7": "0.17.7",
     "npm:@semantic-release/changelog@^6.0.3": "6.0.3_semantic-release@24.2.7__marked@15.0.12",
     "npm:@semantic-release/git@^10.0.1": "10.0.1_semantic-release@24.2.7__marked@15.0.12",
     "npm:sanitize-html@^2.17.0": "2.17.0"
   },
   "jsr": {
-    "@std/assert@1.0.14": {
-      "integrity": "68d0d4a43b365abc927f45a9b85c639ea18a9fab96ad92281e493e4ed84abaa4",
+    "@std/assert@1.0.15": {
+      "integrity": "d64018e951dbdfab9777335ecdb000c0b4e3df036984083be219ce5941e4703b",
       "dependencies": [
         "jsr:@std/internal"
       ]
     },
-    "@std/internal@1.0.10": {
-      "integrity": "e3be62ce42cab0e177c27698e5d9800122f67b766a0bea6ca4867886cbde8cf7"
+    "@std/internal@1.0.12": {
+      "integrity": "972a634fd5bc34b242024402972cd5143eac68d8dffaca5eaa4dba30ce17b027"
     }
   },
   "npm": {
-    "@atproto/api@0.17.0": {
-      "integrity": "sha512-FNS9SW7/3kslAnJH7F4fO9/jPjXzC0NMD6u9NjJ/h4EnaIEpWHZQPkmD9Q2hvAwD6+Uo2boYZEPKkOa55Lr5Dg==",
+    "@atproto/api@0.17.7": {
+      "integrity": "sha512-V+OJBZq9chcrD21xk1bUa6oc5DSKfQj5DmUPf5rmZncqL1w9ZEbS38H5cMyqqdhfgo2LWeDRdZHD0rvNyJsIaw==",
       "dependencies": [
         "@atproto/common-web",
         "@atproto/lexicon",
@@ -2720,8 +2720,8 @@
         "picomatch@4.0.3"
       ]
     },
-    "tlds@1.260.0": {
-      "integrity": "sha512-78+28EWBhCEE7qlyaHA9OR3IPvbCLiDh3Ckla593TksfFc9vfTsgvH7eS+dr3o9qr31gwGbogcI16yN91PoRjQ==",
+    "tlds@1.261.0": {
+      "integrity": "sha512-QXqwfEl9ddlGBaRFXIvNKK6OhipSiLXuRuLJX5DErz0o0Q0rYxulWLdFryTkV5PkdZct5iMInwYEGe/eR++1AA==",
       "bin": true
     },
     "to-regex-range@5.0.1": {
@@ -3090,8 +3090,8 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@std/assert@^1.0.14",
-      "npm:@atproto/api@0.17",
+      "jsr:@std/assert@^1.0.15",
+      "npm:@atproto/api@~0.17.7",
       "npm:sanitize-html@^2.17.0"
     ],
     "packageJson": {

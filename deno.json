@@ -8,8 +8,8 @@
     "docker-run": "deno run  -P main.ts"
   },
   "imports": {
-    "@atproto/api": "npm:@atproto/api@^0.17.0",
-    "@std/assert": "jsr:@std/assert@^1.0.14",
+    "@atproto/api": "npm:@atproto/api@^0.17.7",
+    "@std/assert": "jsr:@std/assert@^1.0.15",
     "sanitize-html": "npm:sanitize-html@^2.17.0"
   },
   "permissions": {
