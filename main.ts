@@ -1,5 +1,5 @@
 import { postToBluesky } from "./bluesky.ts";
-import { fetchNewToots } from "./mastodon.ts";
+import { fetchNewToots } from "./mastodon/mastodon.ts";
 import { loadAttachments, loadLastProcessedPostId, sanitizeHtml, saveLastProcessedPostId, splitText } from "./utils.ts";
 
 if (!import.meta.main) {
@@ -17,7 +17,7 @@ try {
 
     while (true) {
         try {
-            const statuses = await fetchNewToots(lastProcessedPostId);
+            const statuses = await fetchNewToots();
             console.log("🦢", `load ${statuses.length} toots`);
 
             let newTimestampId = 0;
