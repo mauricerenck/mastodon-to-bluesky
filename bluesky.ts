@@ -1,5 +1,5 @@
 import { RichText, AtpAgent } from "@atproto/api";
-import type { Attachment } from "./mastodonTypes.ts";
+import type { Attachment } from "./mastodon/types.ts";
 import { urlToUint8Array } from "./utils.ts";
 
 const url = Deno.env.get("BLUESKY_ENDPOINT");
