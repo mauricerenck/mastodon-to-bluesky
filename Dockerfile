@@ -6,6 +6,6 @@ WORKDIR /usr/src/app
 COPY . .
 
 RUN deno install
-RUN deno cache main.ts
+RUN deno task node-bundle
 
-CMD [ "deno", "task", "docker-run" ]
+#CMD [ "deno", "task", "docker-run" ]
