@@ -5,7 +5,8 @@
   "tasks": {
     "dev": "deno run -P --watch main.ts",
     "run": "deno run -P main.ts",
-    "docker-run": "deno run  -P main.ts"
+    "docker-run": "deno run  -P main.ts",
+    "node-bundle": "deno bundle main.ts --outdir dist"
   },
   "imports": {
     "@atproto/api": "npm:@atproto/api@^0.17.7",
