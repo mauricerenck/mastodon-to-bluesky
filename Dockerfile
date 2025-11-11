@@ -1,6 +1,7 @@
 ARG DENO_VERSION=2.5.6
 
-FROM denoland/deno:alpine-${DENO_VERSION}
+# Stage 1: Build mit Deno
+FROM denoland/deno:alpine-${DENO_VERSION} as builder
 
 WORKDIR /usr/src/app
 COPY . .
@@ -8,4 +9,11 @@ COPY . .
 RUN deno install
 RUN deno task node-bundle
 
-#CMD [ "deno", "task", "docker-run" ]
+# Stage 2: run with NodeJS
+FROM node:24-alpine
+
+WORKDIR /usr/src/app
+
+COPY --from=builder /usr/src/app/dist ./dist
+
+CMD [ "node", "dist/main.js" ]
