@@ -1,15 +1,17 @@
+import fs from "fs/promises";
+import path from "path";
 import sanitize from "sanitize-html";
 import type { Status, Attachment } from "./mastodon/types";
 
 // File to store the last processed Mastodon post ID
-const lastProcessedPostIdFile = join(resolve(), "data", "lastProcessedPostId.txt");
+const lastProcessedPostIdFile = path.join(path.resolve(), "data", "lastProcessedPostId.txt");
 
 /**
  * Load the last processed post ID from the file
  * @returns
  */
 export const loadLastProcessedPostId = async (): Promise<number> => {
-    const value = await Deno.readTextFile(lastProcessedPostIdFile);
+    const value = await fs.readFile(lastProcessedPostIdFile, "utf-8");
     return parseInt(value.trim(), 10);
 };
 
@@ -18,7 +20,7 @@ export const loadLastProcessedPostId = async (): Promise<number> => {
  */
 export const saveLastProcessedPostId = async (lastProcessedPostId: number) => {
     try {
-        await Deno.writeTextFile(lastProcessedPostIdFile, `${lastProcessedPostId}`);
+        await fs.writeFile(lastProcessedPostIdFile, `${lastProcessedPostId}`, "utf-8");
     } catch (error) {
         console.error("Error saving last processed post ID:", error);
     }

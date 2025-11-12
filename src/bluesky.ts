@@ -2,13 +2,13 @@ import { RichText, AtpAgent } from "@atproto/api";
 import type { Attachment } from "./mastodon/types";
 import { urlToUint8Array } from "./utils";
 
-const url = Deno.env.get("BLUESKY_ENDPOINT");
+const url = process.env.BLUESKY_ENDPOINT;
 if (!url) throw new Error("BLUESKY_ENDPOINT not set");
 
-const handle = Deno.env.get("BLUESKY_HANDLE");
+const handle = process.env.BLUESKY_HANDLE;
 if (!handle) throw new Error("BLUESKY_HANDLE");
 
-const password = Deno.env.get("BLUESKY_PASSWORD");
+const password = process.env.BLUESKY_PASSWORD;
 if (!password) throw new Error("BLUESKY_PASSWORD");
 
 const agent = await loginToBluesky(url, handle, password);

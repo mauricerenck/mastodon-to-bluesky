@@ -1,9 +1,9 @@
 import type { Account, Status } from "./types.ts";
 
-const url = Deno.env.get("MASTODON_INSTANCE");
+const url = process.env.MASTODON_INSTANCE;
 if (!url) throw new Error("MASTODON_INSTANCE environment variable is not set.");
 
-const username = Deno.env.get("MASTODON_USER");
+const username = process.env.MASTODON_USER;
 if (!username) throw new Error("MASTODON_USER environment variable is not set.");
 
 const account = await getAccountByUsername(url, username);
