@@ -1,5 +1,5 @@
-import { postToBluesky } from "./bluesky.ts";
-import { fetchNewToots } from "./mastodon/mastodon.ts";
+import { postToBluesky } from "./bluesky";
+import { fetchNewToots } from "./mastodon/mastodon";
 import { loadAttachments, loadLastProcessedPostId, sanitizeHtml, saveLastProcessedPostId, splitText } from "./utils.ts";
 
 if (!import.meta.main) {

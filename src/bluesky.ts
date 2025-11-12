@@ -1,6 +1,6 @@
 import { RichText, AtpAgent } from "@atproto/api";
-import type { Attachment } from "./mastodon/types.ts";
-import { urlToUint8Array } from "./utils.ts";
+import type { Attachment } from "./mastodon/types";
+import { urlToUint8Array } from "./utils";
 
 const url = Deno.env.get("BLUESKY_ENDPOINT");
 if (!url) throw new Error("BLUESKY_ENDPOINT not set");

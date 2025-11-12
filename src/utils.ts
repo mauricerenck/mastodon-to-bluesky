@@ -1,6 +1,5 @@
-import { join, resolve } from "https://deno.land/std/path/mod.ts";
 import sanitize from "sanitize-html";
-import type { Status, Attachment } from "./mastodon/types.ts";
+import type { Status, Attachment } from "./mastodon/types";
 
 // File to store the last processed Mastodon post ID
 const lastProcessedPostIdFile = join(resolve(), "data", "lastProcessedPostId.txt");
