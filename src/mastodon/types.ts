@@ -2,6 +2,11 @@ import { BlobRef } from "@atproto/api";
 
 type Nullable<T> = null | T;
 
+export type MastodonSettings = {
+    url: string;
+    username: string;
+};
+
 export interface Account {
     id: string;
     username: string;

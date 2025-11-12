@@ -1,16 +1,19 @@
 import "dotenv/config";
-import { postToBluesky } from "./bluesky";
-import { fetchNewToots } from "./mastodon/mastodon";
+import { loginToBluesky, postToBluesky } from "./bluesky";
+import { loadMastodonAccount, fetchNewToots } from "./mastodon";
 import { loadAttachments, loadLastProcessedPostId, sanitizeHtml, saveLastProcessedPostId, splitText } from "./utils";
 
-const intervalMinutes = parseInt(process.env.INTERVAL_MINUTES ?? "5");
-console.log("⏱️", `${intervalMinutes} minutes`);
+try {
+    const intervalMinutes = parseInt(process.env.INTERVAL_MINUTES ?? "5");
+    console.log("⏱️", `${intervalMinutes} minutes`);
 
-async function main() {
-    try {
+    async function main() {
         // Variable to store the last processed Mastodon post ID
         let lastProcessedPostId = await loadLastProcessedPostId();
         console.log("📅", lastProcessedPostId);
+
+        await loginToBluesky();
+        await loadMastodonAccount();
 
         while (true) {
             try {
@@ -53,13 +56,13 @@ async function main() {
                 console.error("🔥", error);
             }
         }
-    } catch (error) {
-        console.error(error);
     }
-}
 
-main().then(() => {
-    setInterval(async () => {
-        await main();
-    }, intervalMinutes * 60 * 1000);
-});
+    main().then(() => {
+        setInterval(async () => {
+            await main();
+        }, intervalMinutes * 60 * 1000);
+    });
+} catch (error) {
+    console.error(error);
+}

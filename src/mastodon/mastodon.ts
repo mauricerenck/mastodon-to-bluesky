@@ -1,12 +1,28 @@
-import type { Account, Status } from "./types.ts";
+import type { Account, MastodonSettings, Status } from "./types.ts";
 
-const url = process.env.MASTODON_INSTANCE;
-if (!url) throw new Error("MASTODON_INSTANCE environment variable is not set.");
+let account: Account = null!;
 
-const username = process.env.MASTODON_USER;
-if (!username) throw new Error("MASTODON_USER environment variable is not set.");
+export const loadMastodonAccount = async () => {
+    if (account) {
+        return account;
+    }
 
-const account = await getAccountByUsername(url, username);
+    const { url, username } = loadSettings();
+    account = await getAccountByUsername(url, username);
+};
+
+function loadSettings() {
+    const url = process.env.MASTODON_INSTANCE;
+    if (!url) throw new Error("MASTODON_INSTANCE environment variable is not set.");
+
+    const username = process.env.MASTODON_USER;
+    if (!username) throw new Error("MASTODON_USER environment variable is not set.");
+
+    return {
+        url,
+        username
+    } as MastodonSettings;
+}
 
 /**
  * periodically fetch new Mastodon posts

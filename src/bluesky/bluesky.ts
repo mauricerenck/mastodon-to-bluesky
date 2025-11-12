@@ -1,17 +1,35 @@
 import { RichText, AtpAgent } from "@atproto/api";
-import type { Attachment } from "./mastodon/types";
-import { urlToUint8Array } from "./utils";
+import type { Attachment } from "../mastodon/types";
+import { urlToUint8Array } from "../utils";
+import type { BlueSkySettings } from "./types";
 
-const url = process.env.BLUESKY_ENDPOINT;
-if (!url) throw new Error("BLUESKY_ENDPOINT not set");
+let agent: AtpAgent = null!;
 
-const handle = process.env.BLUESKY_HANDLE;
-if (!handle) throw new Error("BLUESKY_HANDLE");
+export const loginToBluesky = async () => {
+    if (agent) {
+        return agent;
+    }
 
-const password = process.env.BLUESKY_PASSWORD;
-if (!password) throw new Error("BLUESKY_PASSWORD");
+    const { url, handle, password } = loadSettings();
+    agent = await login(url, handle, password);
+};
 
-const agent = await loginToBluesky(url, handle, password);
+function loadSettings() {
+    const url = process.env.BLUESKY_ENDPOINT;
+    if (!url) throw new Error("BLUESKY_ENDPOINT not set");
+
+    const handle = process.env.BLUESKY_HANDLE;
+    if (!handle) throw new Error("BLUESKY_HANDLE");
+
+    const password = process.env.BLUESKY_PASSWORD;
+    if (!password) throw new Error("BLUESKY_PASSWORD");
+
+    return {
+        url,
+        handle,
+        password
+    } as BlueSkySettings;
+}
 
 export const postToBluesky = async (textParts: string[], attachments: Attachment[]) => {
     const images = attachments.filter((attachment) => attachment.type === "image");
@@ -58,7 +76,7 @@ export const postToBluesky = async (textParts: string[], attachments: Attachment
     }
 };
 
-async function loginToBluesky(url: string, handle: string, password: string): Promise<AtpAgent> {
+async function login(url: string, handle: string, password: string): Promise<AtpAgent> {
     const agent = new AtpAgent({ service: url });
 
     try {
