@@ -1,8 +1,8 @@
-version: '3'
 services:
     app:
         image: ghcr.io/mauricerenck/mastodon-to-bluesky:latest
         container_name: mastodon-to-bluesky
+        restart: unless-stopped
         env_file: '.env'
         # environment:
         #     MASTODON_INSTANCE: 'https://mastodon.instance'
@@ -13,8 +13,3 @@ services:
         #     INTERVAL_MINUTES: 5
         volumes:
             - mastodon-to-bluesky:/usr/src/app/data
-        restart: unless-stopped
-
-volumes:
-    mastodon-to-bluesky:
-        external: true
