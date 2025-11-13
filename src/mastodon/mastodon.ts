@@ -1,14 +1,16 @@
-import type { Account, MastodonSettings, Status } from "./types.ts";
+import type { Account, MastodonSettings, Status } from "./types";
 
+let settings: MastodonSettings = null!;
 let account: Account = null!;
 
 export const loadMastodonAccount = async () => {
-    if (account) {
-        return account;
+    if (!settings) {
+        settings = loadSettings();
     }
 
-    const { url, username } = loadSettings();
-    account = await getAccountByUsername(url, username);
+    if (!account) {
+        account = await getAccountByUsername(settings.url, settings.username);
+    }
 };
 
 function loadSettings() {
@@ -31,8 +33,8 @@ function loadSettings() {
  */
 export const fetchNewToots = async () => {
     try {
-        const allStatuses = (await getStatuses(url, account.id)).filter(
-            // filter replies and reblogs
+        const allStatuses = (await getStatuses(settings.url, account.id)).filter(
+            // filter replies and re-blogs
             (status) =>
                 status.in_reply_to_id === null && status.in_reply_to_account_id === null && status.reblog === null
         );
@@ -40,7 +42,7 @@ export const fetchNewToots = async () => {
         //return lastProcessedPostId === 0 ? allStatuses : findAfterDate(allStatuses, new Date(lastProcessedPostId));
         return allStatuses;
     } catch (error) {
-        console.error(`getting toots for ${username} returned an error`, error);
+        console.error(`getting toots for ${settings.username} returned an error`, error);
         throw error;
     }
 };
