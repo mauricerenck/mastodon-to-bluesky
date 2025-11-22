@@ -1,6 +1,6 @@
 import "dotenv/config";
-import { loginToBluesky, postToBluesky } from "./bluesky";
-import { loadMastodonAccount, fetchNewToots } from "./mastodon";
+import * as bluesky from "./bluesky";
+import * as mastodon from "./mastodon";
 import { loadAttachments, loadLastProcessedPostId, sanitizeHtml, saveLastProcessedPostId, splitText } from "./utils";
 
 try {
@@ -12,12 +12,12 @@ try {
         let lastProcessedPostId = await loadLastProcessedPostId();
         console.log("📅", lastProcessedPostId);
 
-        await loginToBluesky();
-        await loadMastodonAccount();
+        await bluesky.login();
+        await mastodon.loadAccount();
 
         while (true) {
             try {
-                const statuses = await fetchNewToots();
+                const statuses = await mastodon.fetchNewToots();
                 console.log("🦢", `load ${statuses.length} toots`);
 
                 let newTimestampId = 0;
@@ -26,7 +26,9 @@ try {
                     const currentTimestampId = new Date(status.created_at).getTime();
                     console.log("🐛", status.created_at, currentTimestampId);
 
-                    if (currentTimestampId > newTimestampId) newTimestampId = currentTimestampId;
+                    if (currentTimestampId > newTimestampId) {
+                        newTimestampId = currentTimestampId;
+                    }
 
                     if (currentTimestampId > lastProcessedPostId && lastProcessedPostId != 0) {
                         try {
@@ -35,7 +37,7 @@ try {
                             const contentParts = splitText(sanitizeHtml(status.content), 300);
                             const attachments = loadAttachments(status);
 
-                            postToBluesky(contentParts, attachments);
+                            bluesky.post(contentParts, attachments);
                         } catch (error) {
                             console.error(
                                 "🔥 can't post to Bluesky",

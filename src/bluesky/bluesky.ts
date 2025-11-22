@@ -5,13 +5,13 @@ import type { BlueSkySettings } from "./types";
 
 let agent: AtpAgent = null!;
 
-export const loginToBluesky = async () => {
+export const login = async () => {
     if (agent) {
         return agent;
     }
 
     const { url, handle, password } = loadSettings();
-    agent = await login(url, handle, password);
+    agent = await loginInternal(url, handle, password);
 };
 
 function loadSettings() {
@@ -31,7 +31,7 @@ function loadSettings() {
     } as BlueSkySettings;
 }
 
-export const postToBluesky = async (textParts: string[], attachments: Attachment[]) => {
+export const post = async (textParts: string[], attachments: Attachment[]) => {
     const images = attachments.filter((attachment) => attachment.type === "image");
     //const videos = attachments.filter((attachment) => attachment.medium === "video");
 
@@ -76,7 +76,7 @@ export const postToBluesky = async (textParts: string[], attachments: Attachment
     }
 };
 
-async function login(url: string, handle: string, password: string): Promise<AtpAgent> {
+async function loginInternal(url: string, handle: string, password: string): Promise<AtpAgent> {
     const agent = new AtpAgent({ service: url });
 
     try {

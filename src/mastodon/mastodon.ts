@@ -3,7 +3,7 @@ import type { Account, MastodonSettings, Status } from "./types";
 let settings: MastodonSettings = null!;
 let account: Account = null!;
 
-export const loadMastodonAccount = async () => {
+export const loadAccount = async () => {
     if (!settings) {
         settings = loadSettings();
     }

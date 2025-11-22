@@ -1,1 +1,1 @@
-export { loginToBluesky, postToBluesky } from "./bluesky";
+export { login, post } from "./bluesky";
