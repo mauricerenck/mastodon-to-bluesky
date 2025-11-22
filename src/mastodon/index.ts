@@ -1,1 +1,1 @@
-export { loadAccount, fetchNewToots } from "./mastodon";
+export { fetchNewToots } from "./mastodon";

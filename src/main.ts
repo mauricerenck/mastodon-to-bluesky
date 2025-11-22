@@ -13,7 +13,6 @@ try {
         console.log("📅", lastProcessedPostId);
 
         await bluesky.login();
-        await mastodon.loadAccount();
 
         while (true) {
             try {

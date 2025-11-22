@@ -3,16 +3,6 @@ import type { Account, MastodonSettings, Status } from "./types";
 let settings: MastodonSettings = null!;
 let account: Account = null!;
 
-export const loadAccount = async () => {
-    if (!settings) {
-        settings = loadSettings();
-    }
-
-    if (!account) {
-        account = await getAccountByUsername(settings.url, settings.username);
-    }
-};
-
 function loadSettings() {
     const url = process.env.MASTODON_INSTANCE;
     if (!url) throw new Error("MASTODON_INSTANCE environment variable is not set.");
@@ -32,6 +22,14 @@ function loadSettings() {
  * @returns
  */
 export const fetchNewToots = async () => {
+    if (!settings) {
+        settings = loadSettings();
+    }
+
+    if (!account) {
+        account = await getAccountByUsername(settings.url, settings.username);
+    }
+
     try {
         const allStatuses = (await getStatuses(settings.url, account.id)).filter(
             // filter replies and re-blogs
