@@ -10,6 +10,7 @@ services:
         #     BLUESKY_ENDPOINT: 'https://bsky.social'
         #     BLUESKY_HANDLE: 'USERNAME.bsky.social'
         #     BLUESKY_PASSWORD: 'PASSWORD'
+        #     BLUESKY_MAX_POST_LENGTH: 300
         #     INTERVAL_MINUTES: 5
         volumes:
             - mastodon-to-bluesky:/usr/src/app/data
