@@ -1,7 +1,7 @@
 import "dotenv/config";
 import * as bluesky from "./bluesky";
 import * as mastodon from "./mastodon";
-import { loadAttachments, loadLastProcessedPostId, sanitizeHtml, saveLastProcessedPostId, splitText } from "./utils";
+import { loadAttachments, loadLastProcessedPostId, saveLastProcessedPostId } from "./utils";
 
 try {
     const intervalMinutes = parseInt(process.env.INTERVAL_MINUTES ?? "5");
@@ -33,10 +33,8 @@ try {
                         try {
                             console.log("📧 posting to BlueSky", status.id, status.created_at);
 
-                            const contentParts = splitText(sanitizeHtml(status.content), 300);
                             const attachments = loadAttachments(status);
-
-                            bluesky.post(contentParts, attachments);
+                            bluesky.post(status.content, attachments);
                         } catch (error) {
                             console.error(
                                 "🔥 can't post to Bluesky",

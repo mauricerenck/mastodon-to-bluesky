@@ -1,16 +1,21 @@
 import { RichText, AtpAgent } from "@atproto/api";
 import type { Attachment } from "../mastodon/types";
-import { urlToUint8Array } from "../utils";
+import { sanitizeHtml, splitText, urlToUint8Array } from "../utils";
 import type { BlueSkySettings } from "./types";
 
+let settings: BlueSkySettings = null!;
 let agent: AtpAgent = null!;
 
 export const login = async () => {
+    if (!settings) {
+        settings = loadSettings();
+    }
+
     if (agent) {
         return agent;
     }
 
-    const { url, handle, password } = loadSettings();
+    const { url, handle, password } = settings;
     agent = await loginInternal(url, handle, password);
 };
 
@@ -24,14 +29,19 @@ function loadSettings() {
     const password = process.env.BLUESKY_PASSWORD;
     if (!password) throw new Error("BLUESKY_PASSWORD");
 
+    const maxPostLength = parseInt(process.env.BLUESKY_MAX_POST_LENGTH ?? "300");
+
     return {
         url,
         handle,
-        password
+        password,
+        maxPostLength
     } as BlueSkySettings;
 }
 
-export const post = async (textParts: string[], attachments: Attachment[]) => {
+export const post = async (message: string, attachments: Attachment[]) => {
+    const messageParts = splitText(sanitizeHtml(message), settings.maxPostLength);
+
     const images = attachments.filter((attachment) => attachment.type === "image");
     //const videos = attachments.filter((attachment) => attachment.medium === "video");
 
@@ -43,7 +53,7 @@ export const post = async (textParts: string[], attachments: Attachment[]) => {
         image.blob = data.blob;
     }
 
-    const rootMessage = await createBlueskyMessage(textParts[0]);
+    const rootMessage = await createBlueskyMessage(messageParts[0]);
     const embedPart =
         images.length === 0
             ? {}
@@ -61,11 +71,11 @@ export const post = async (textParts: string[], attachments: Attachment[]) => {
         ...embedPart
     });
 
-    if (textParts.length === 1) return;
+    if (messageParts.length === 1) return;
 
     let replyMessageResponse = null;
-    for (let index = 1; index < textParts.length; index++) {
-        const replyMessage = await createBlueskyMessage(textParts[index]);
+    for (let index = 1; index < messageParts.length; index++) {
+        const replyMessage = await createBlueskyMessage(messageParts[index]);
         replyMessageResponse = await agent.post({
             ...replyMessage,
             reply: {

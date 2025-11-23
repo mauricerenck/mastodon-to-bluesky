@@ -71,7 +71,9 @@ export const loadAttachments = (status: Status) =>
         const type = attachment.type as "video" | "image";
         const altText = attachment.description ?? null;
 
-        if (!["video", "image"].includes(type)) return list;
+        if (!["video", "image"].includes(type)) {
+            return list;
+        }
 
         return [
             ...list,
