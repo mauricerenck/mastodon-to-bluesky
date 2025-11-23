@@ -67,9 +67,7 @@ export const sanitizeHtml = (input: string) => {
 
 export const loadAttachments = (status: Status) =>
     status.media_attachments.reduce((list, attachment) => {
-        const url = attachment.url;
-        const type = attachment.type as "video" | "image";
-        const altText = attachment.description ?? null;
+        const { url, type, description } = attachment;
 
         if (!["video", "image"].includes(type)) {
             return list;
@@ -79,8 +77,8 @@ export const loadAttachments = (status: Status) =>
             ...list,
             {
                 url,
-                altText,
-                type
+                type,
+                altText: attachment.description ?? null
             } as Attachment
         ];
     }, [] as Attachment[]);
