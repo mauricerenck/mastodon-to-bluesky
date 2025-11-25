@@ -47,10 +47,13 @@ export const post = async (message: string, attachments: Attachment[]) => {
 
     // upload images first
     for (const image of images) {
-        const imageContent = await urlToUint8Array(image.url);
-        const { data } = await agent.uploadBlob(imageContent, { encoding: image.type });
-
-        image.blob = data.blob;
+        try {
+            const imageContent = await urlToUint8Array(image.url);
+            const { data } = await agent.uploadBlob(imageContent, { encoding: image.type });
+            image.blob = data.blob;
+        } catch (err) {
+            console.error("can't upload image", message, err);
+        }
     }
 
     const rootMessage = await createBlueskyMessage(messageParts[0]);
