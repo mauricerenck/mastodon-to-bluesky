@@ -14,46 +14,44 @@ try {
 
         await bluesky.login();
 
-        while (true) {
-            try {
-                const statuses = await mastodon.fetchNewToots();
-                console.log("🦢", `load ${statuses.length} toots`);
+        try {
+            const statuses = await mastodon.fetchNewToots();
+            console.log("🦢", `load ${statuses.length} toots`);
 
-                let newTimestampId = 0;
+            let newTimestampId = 0;
 
-                for (const status of statuses.reverse()) {
-                    const currentTimestampId = new Date(status.created_at).getTime();
-                    console.log("🐛", status.created_at, currentTimestampId);
+            for (const status of statuses.reverse()) {
+                const currentTimestampId = new Date(status.created_at).getTime();
+                console.log("🐛", status.created_at, currentTimestampId);
 
-                    if (currentTimestampId > newTimestampId) {
-                        newTimestampId = currentTimestampId;
-                    }
-
-                    if (currentTimestampId > lastProcessedPostId && lastProcessedPostId != 0) {
-                        try {
-                            console.log("📧 posting to BlueSky", status.id, status.created_at);
-
-                            const attachments = loadAttachments(status);
-                            bluesky.post(status.content, attachments);
-                        } catch (error) {
-                            console.error(
-                                "🔥 can't post to Bluesky",
-                                status.id,
-                                status.created_at,
-                                currentTimestampId,
-                                error
-                            );
-                        }
-                    }
+                if (currentTimestampId > newTimestampId) {
+                    newTimestampId = currentTimestampId;
                 }
 
-                if (newTimestampId > 0) {
-                    lastProcessedPostId = newTimestampId;
-                    saveLastProcessedPostId(lastProcessedPostId);
+                if (currentTimestampId > lastProcessedPostId && lastProcessedPostId != 0) {
+                    try {
+                        console.log("📧 posting to BlueSky", status.id, status.created_at);
+
+                        const attachments = loadAttachments(status);
+                        bluesky.post(status.content, attachments);
+                    } catch (error) {
+                        console.error(
+                            "🔥 can't post to Bluesky",
+                            status.id,
+                            status.created_at,
+                            currentTimestampId,
+                            error
+                        );
+                    }
                 }
-            } catch (error) {
-                console.error("🔥", error);
             }
+
+            if (newTimestampId > 0) {
+                lastProcessedPostId = newTimestampId;
+                saveLastProcessedPostId(lastProcessedPostId);
+            }
+        } catch (error) {
+            console.error("🔥", error);
         }
     }
 
