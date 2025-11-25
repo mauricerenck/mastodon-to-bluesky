@@ -3,63 +3,58 @@ import * as bluesky from "./bluesky";
 import * as mastodon from "./mastodon";
 import { loadAttachments, loadLastProcessedPostId, saveLastProcessedPostId } from "./utils";
 
-try {
-    const intervalMinutes = parseInt(process.env.INTERVAL_MINUTES ?? "5");
-    console.log("⏱️", `${intervalMinutes} minutes`);
+const intervalMinutes = parseInt(process.env.INTERVAL_MINUTES ?? "5");
+console.log("⏱️", `${intervalMinutes} minutes`);
 
-    async function main() {
-        // Variable to store the last processed Mastodon post ID
-        let lastProcessedPostId = await loadLastProcessedPostId();
-        console.log("📅", lastProcessedPostId);
+async function main() {
+    // Variable to store the last processed Mastodon post ID
+    let lastProcessedPostId = await loadLastProcessedPostId();
+    console.log("📅", lastProcessedPostId);
 
-        await bluesky.login();
+    try {
+        const statuses = await mastodon.fetchNewToots();
+        console.log("🦢", `load ${statuses.length} toots`);
 
-        try {
-            const statuses = await mastodon.fetchNewToots();
-            console.log("🦢", `load ${statuses.length} toots`);
+        let newTimestampId = 0;
 
-            let newTimestampId = 0;
+        for (const status of statuses.reverse()) {
+            const currentTimestampId = new Date(status.created_at).getTime();
+            console.log("🐛", status.created_at, currentTimestampId);
 
-            for (const status of statuses.reverse()) {
-                const currentTimestampId = new Date(status.created_at).getTime();
-                console.log("🐛", status.created_at, currentTimestampId);
-
-                if (currentTimestampId > newTimestampId) {
-                    newTimestampId = currentTimestampId;
-                }
-
-                if (currentTimestampId > lastProcessedPostId && lastProcessedPostId != 0) {
-                    try {
-                        console.log("📧 posting to BlueSky", status.id, status.created_at);
-
-                        const attachments = loadAttachments(status);
-                        bluesky.post(status.content, attachments);
-                    } catch (error) {
-                        console.error(
-                            "🔥 can't post to Bluesky",
-                            status.id,
-                            status.created_at,
-                            currentTimestampId,
-                            error
-                        );
-                    }
-                }
+            if (currentTimestampId > newTimestampId) {
+                newTimestampId = currentTimestampId;
             }
 
-            if (newTimestampId > 0) {
-                lastProcessedPostId = newTimestampId;
-                saveLastProcessedPostId(lastProcessedPostId);
+            if (currentTimestampId > lastProcessedPostId && lastProcessedPostId != 0) {
+                try {
+                    console.log("📧 posting to BlueSky", status.id, status.created_at);
+
+                    const attachments = loadAttachments(status);
+                    bluesky.post(status.content, attachments);
+                } catch (error) {
+                    console.error("🔥 can't post to Bluesky", status.id, status.created_at, currentTimestampId, error);
+                }
             }
-        } catch (error) {
-            console.error("🔥", error);
         }
-    }
 
-    main().then(() => {
+        if (newTimestampId > 0) {
+            lastProcessedPostId = newTimestampId;
+            await saveLastProcessedPostId(lastProcessedPostId);
+        }
+    } catch (error) {
+        console.error("🔥", error);
+    }
+}
+
+(async () => {
+    try {
+        await bluesky.login();
+        await main();
+
         setInterval(async () => {
             await main();
         }, intervalMinutes * 60 * 1000);
-    });
-} catch (error) {
-    console.error(error);
-}
+    } catch (error) {
+        console.error(error);
+    }
+})();
