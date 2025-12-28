@@ -29,7 +29,7 @@ async function main() {
                 try {
                     console.log("📧 posting to BlueSky", status.id, status.created_at);
 
-                    const attachments = loadAttachments(status);
+                    const attachments = await loadAttachments(status);
                     bluesky.post(status.content, attachments);
                 } catch (error) {
                     console.error("🔥 can't post to Bluesky", status.id, status.created_at, currentTimestampId, error);

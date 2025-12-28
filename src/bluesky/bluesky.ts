@@ -49,10 +49,10 @@ export const post = async (message: string, attachments: Attachment[]) => {
     for (const image of images) {
         try {
             const imageContent = await urlToUint8Array(image.url);
-            const { data } = await agent.uploadBlob(imageContent, { encoding: image.type });
+            const { data } = await agent.uploadBlob(imageContent, { encoding: image.mimeType });
             image.blob = data.blob;
         } catch (err) {
-            console.error("can't upload image", message, err);
+            console.error("can't upload image", image.url, err);
         }
     }
 

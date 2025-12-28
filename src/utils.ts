@@ -65,26 +65,43 @@ export const sanitizeHtml = (input: string) => {
     return addSpace;
 };
 
-export const loadAttachments = (status: Status) =>
-    status.media_attachments.reduce((list, attachment) => {
-        const { url, type, description } = attachment;
+export const loadAttachments = async (status: Status) => {
+    const validAttachments = status.media_attachments.filter((att) => ["video", "image"].includes(att.type));
 
-        if (!["video", "image"].includes(type)) {
-            return list;
-        }
+    const attachmentPromises = validAttachments.map(async (attachment) => {
+        const { url, type } = attachment;
 
-        return [
-            ...list,
-            {
-                url,
-                type,
-                altText: attachment.description ?? null
-            } as Attachment
-        ];
-    }, [] as Attachment[]);
+        const mimeType = await getMimeType(url);
+
+        return {
+            url,
+            type,
+            mimeType,
+            altText: attachment.description ?? null
+        } as Attachment;
+    });
+
+    return await Promise.all(attachmentPromises);
+};
 
 export const urlToUint8Array = async (url: string) => {
     const response = await fetch(url);
     const arrayBuffer = await response.arrayBuffer();
     return new Uint8Array(arrayBuffer);
 };
+
+async function getMimeType(url: string) {
+    try {
+        const response = await fetch(url, { method: "HEAD" });
+
+        if (response.ok) {
+            return response.headers.get("Content-Type");
+        } else {
+            console.warn("Server antwortete mit Status:", response.status);
+            return null;
+        }
+    } catch (error) {
+        console.error("Fehler beim Abrufen des MIME-Types:", error);
+        return null;
+    }
+}
