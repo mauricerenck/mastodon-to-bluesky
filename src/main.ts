@@ -1,7 +1,7 @@
 import "dotenv/config";
-import * as bluesky from "./bluesky";
-import * as mastodon from "./mastodon";
-import { loadAttachments, loadLastProcessedPostId, saveLastProcessedPostId } from "./utils";
+import * as bluesky from "./bluesky/index.js";
+import * as mastodon from "./mastodon/index.js";
+import { loadAttachments, loadLastProcessedPostId, saveLastProcessedPostId } from "./utils.js";
 
 const intervalMinutes = parseInt(process.env.INTERVAL_MINUTES ?? "5");
 console.log("⏱️", `${intervalMinutes} minutes`);

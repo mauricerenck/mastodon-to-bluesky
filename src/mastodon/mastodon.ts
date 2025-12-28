@@ -1,4 +1,4 @@
-import type { Account, MastodonSettings, Status } from "./types";
+import type { Account, MastodonSettings, Status } from "./types.js";
 
 let settings: MastodonSettings = null!;
 let account: Account = null!;

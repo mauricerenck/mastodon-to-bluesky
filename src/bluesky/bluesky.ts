@@ -1,7 +1,7 @@
 import { RichText, AtpAgent } from "@atproto/api";
-import type { Attachment } from "../mastodon/types";
-import { sanitizeHtml, splitText, urlToUint8Array } from "../utils";
-import type { BlueSkySettings } from "./types";
+import type { Attachment } from "../mastodon/types.js";
+import { sanitizeHtml, splitText, urlToUint8Array } from "../utils.js";
+import type { BlueSkySettings } from "./types.js";
 
 let settings: BlueSkySettings = null!;
 let agent: AtpAgent = null!;

@@ -1,1 +1,1 @@
-export { fetchNewToots } from "./mastodon";
+export { fetchNewToots } from "./mastodon.js";

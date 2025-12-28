@@ -1,1 +1,1 @@
-export { login, post } from "./bluesky";
+export { login, post } from "./bluesky.js";

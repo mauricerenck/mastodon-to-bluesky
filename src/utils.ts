@@ -1,7 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import sanitize from "sanitize-html";
-import type { Status, Attachment } from "./mastodon/types";
+import type { Status, Attachment } from "./mastodon/types.js";
 
 // File to store the last processed Mastodon post ID
 const lastProcessedPostIdFile = path.join(path.resolve(), "data", "lastProcessedPostId.txt");
