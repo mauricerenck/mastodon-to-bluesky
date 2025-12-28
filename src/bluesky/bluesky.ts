@@ -41,33 +41,15 @@ function loadSettings() {
 
 export const post = async (message: string, attachments: Attachment[]) => {
     const messageParts = splitText(sanitizeHtml(message), settings.maxPostLength);
-
-    const images = attachments.filter((attachment) => attachment.type === "image");
-    //const videos = attachments.filter((attachment) => attachment.medium === "video");
-
-    // upload images
-    for (const image of images) {
-        if (!image.mimeType) {
-            console.log("skip image without mime-type", image.url);
-            continue;
-        }
-
-        try {
-            const imageContent = await urlToUint8Array(image.url);
-            const { data } = await agent.uploadBlob(imageContent, { encoding: image.mimeType });
-            image.blob = data.blob;
-        } catch (err) {
-            console.error("can't upload image", image.url, err);
-        }
-    }
+    const uploadedImages = await uploadImages(attachments);
 
     const rootMessage = await createBlueskyMessage(messageParts[0]);
     const embedPart =
-        images.length === 0
+        uploadedImages.length === 0
             ? {}
             : {
                   embed: {
-                      images: images.map((image) => ({
+                      images: uploadedImages.map((image) => ({
                           alt: image.altText,
                           image: image.blob
                       })),
@@ -79,7 +61,9 @@ export const post = async (message: string, attachments: Attachment[]) => {
         ...embedPart
     });
 
-    if (messageParts.length === 1) return;
+    if (messageParts.length === 1) {
+        return;
+    }
 
     let replyMessageResponse = null;
     for (let index = 1; index < messageParts.length; index++) {
@@ -110,6 +94,36 @@ async function loginInternal(url: string, handle: string, password: string): Pro
         console.error("🔒 Login to Bluesky failed:", error);
         throw error;
     }
+}
+
+async function uploadImages(attachments: Attachment[]) {
+    const images = attachments.filter((attachment) => attachment.type === "image");
+    const uploadedImages = [] as Attachment[];
+
+    for (const image of images) {
+        if (!image.mimeType) {
+            console.log("skip image without mime-type", image.url);
+            continue;
+        }
+
+        try {
+            const imageContent = await urlToUint8Array(image.url);
+            const { success, data } = await agent.uploadBlob(imageContent, { encoding: image.mimeType });
+
+            if (!success) {
+                continue;
+            }
+
+            uploadedImages.push({
+                ...image,
+                blob: data.blob
+            });
+        } catch (err) {
+            console.error("can't upload image", image.url, err);
+        }
+    }
+
+    return uploadedImages;
 }
 
 async function createBlueskyMessage(text: string) {
