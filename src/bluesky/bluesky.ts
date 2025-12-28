@@ -45,8 +45,13 @@ export const post = async (message: string, attachments: Attachment[]) => {
     const images = attachments.filter((attachment) => attachment.type === "image");
     //const videos = attachments.filter((attachment) => attachment.medium === "video");
 
-    // upload images first
+    // upload images
     for (const image of images) {
+        if (!image.mimeType) {
+            console.log("skip image without mime-type", image.url);
+            continue;
+        }
+
         try {
             const imageContent = await urlToUint8Array(image.url);
             const { data } = await agent.uploadBlob(imageContent, { encoding: image.mimeType });

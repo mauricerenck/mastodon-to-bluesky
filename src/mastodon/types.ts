@@ -130,6 +130,6 @@ export type Attachment = {
     url: string;
     altText: Nullable<string>;
     type: "image" | "video";
-    mimeType: string; // e.g. "image/jpeg"
+    mimeType: Nullable<string>; // e.g. "image/jpeg"
     blob?: BlobRef;
 };

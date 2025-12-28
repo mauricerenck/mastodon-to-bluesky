@@ -67,10 +67,8 @@ export const sanitizeHtml = (input: string) => {
 
 export const loadAttachments = async (status: Status) => {
     const validAttachments = status.media_attachments.filter((att) => ["video", "image"].includes(att.type));
-
     const attachmentPromises = validAttachments.map(async (attachment) => {
         const { url, type } = attachment;
-
         const mimeType = await getMimeType(url);
 
         return {
