@@ -14,11 +14,15 @@ RUN npm run build
 # stage 2 (run code)
 FROM node:${NODE_VERSION}-alpine AS runner
 
+ENV NODE_ENV=production
+
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install --omit=dev
+RUN npm install --omit=dev && npm cache clean --force
 
-COPY --from=builder /app/dist ./dist
+COPY --from=builder --chown=node:node /app/dist ./dist
+
+USER node
 
 CMD [ "node", "dist/index.js" ]
