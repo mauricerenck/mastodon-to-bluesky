@@ -51,11 +51,12 @@ jobs:
               uses: docker/build-push-action@v5
               with:
                   context: .
-                  labels: ${{ steps.meta.outputs.labels }}
                   push: true
+                  labels: ${{ steps.meta.outputs.labels }}
                   tags: ${{ steps.meta.outputs.tags }}
                   platforms: linux/amd64,linux/arm64,linux/arm/v7
-
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
                   build-args: |
                       NODE_VERSION=${{ steps.nvm.outputs.NODE_VERSION }}
 
