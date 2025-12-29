@@ -1,6 +1,7 @@
 ARG NODE_VERSION=24
 
-FROM node:${NODE_VERSION}-alpine
+# stage 1 (transpile code)
+FROM node:${NODE_VERSION}-alpine AS builder
 
 WORKDIR /app
 
@@ -8,5 +9,16 @@ COPY package*.json ./
 RUN npm install
 
 COPY . .
+RUN npm run build
 
-CMD [ "npx", "ts-node", "src/main.ts" ]
+# stage 2 (run code)
+FROM node:${NODE_VERSION}-alpine AS runner
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install --omit=dev
+
+COPY --from=builder /app/dist ./dist
+
+CMD [ "node", "dist/index.js" ]
