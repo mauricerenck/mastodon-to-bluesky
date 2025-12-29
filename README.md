@@ -6,13 +6,13 @@ Crosspost from Mastodon to Bluesky
 
 ---
 
-This scripts listens to your Mastodon account and crossposts your toots to your Bluesky account. It uses the Mastodon API and the Bluesky API to achieve this. The script is written in Typescript ([Deno](https://deno.com)) and can be run on your local machine or on a server.
+This scripts listens to your Mastodon account and crossposts your toots to your Bluesky account. It uses the Mastodon API and the Bluesky API to achieve this. The script is written in Typescript and can be run on your local machine or on a server.
 
 ---
 
 ## Installation
 
-You can run the script directly using [Deno](https://deno.com) or you can use our Docker image.
+You can run the script directly using [NodeJS](https://www.nodejs.org) or you can use our Docker image.
 
 ### Direct
 
@@ -21,11 +21,16 @@ You can run the script directly using [Deno](https://deno.com) or you can use ou
 ```bash
 git clone https://github.com/mauricerenck/mastodon-to-bluesky.git
 cd mastodon-to-bluesky
-deno install
+npm install
 ```
 
 - [set environment variables](#configuration)
-- run the script: `deno task run`
+- run the script:
+
+    ```bash
+    npm run build
+    npm run start
+    ```
 
 ### Docker 🐳
 
