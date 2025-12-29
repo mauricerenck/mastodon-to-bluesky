@@ -1,6 +1,6 @@
 {
   "name": "mastodon-to-bluesky",
-  "version": "1.5.3",
+  "version": "1.5.4",
   "description": "",
   "main": "main.js",
   "type": "module",
