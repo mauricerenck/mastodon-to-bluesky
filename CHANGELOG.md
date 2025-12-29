@@ -1,3 +1,10 @@
+## [1.5.1](https://github.com/mauricerenck/mastodon-to-bluesky/compare/v1.5.0...v1.5.1) (2025-12-29)
+
+
+### Reverts
+
+* Revert "remove armv7 support (because not supported bei NodeJS 24 image)" ([ba47460](https://github.com/mauricerenck/mastodon-to-bluesky/commit/ba474608ac2860b78ee0c7abf6fef52836085466))
+
 ## [1.2.1](https://github.com/mauricerenck/mastodon-to-bluesky/compare/v1.2.0...v1.2.1) (2024-11-30)
 
 
