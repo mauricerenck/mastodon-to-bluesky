@@ -24,6 +24,8 @@ RUN npm install --omit=dev && npm cache clean --force
 COPY --from=builder --chown=node:node /app/dist ./dist
 COPY --from=builder --chown=node:node /app/data ./data
 
+RUN chown -R node:node /usr/src/app
+
 USER node
 
 CMD [ "node", "dist/main.js" ]
