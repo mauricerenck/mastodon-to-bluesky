@@ -3,3 +3,5 @@ npm-debug.log
 .env
 Dockerfile
 .dockerignore
+dist
+.git

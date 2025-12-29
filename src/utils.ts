@@ -1,16 +1,17 @@
-import { join, resolve } from "https://deno.land/std/path/mod.ts";
+import fs from "fs/promises";
+import path from "path";
 import sanitize from "sanitize-html";
-import type { Status, Attachment } from "./mastodonTypes.ts";
+import type { Status, Attachment } from "./mastodon/types.js";
 
 // File to store the last processed Mastodon post ID
-const lastProcessedPostIdFile = join(resolve(), "data", "lastProcessedPostId.txt");
+const lastProcessedPostIdFile = path.join(path.resolve(), "data", "lastProcessedPostId.txt");
 
 /**
  * Load the last processed post ID from the file
  * @returns
  */
 export const loadLastProcessedPostId = async (): Promise<number> => {
-    const value = await Deno.readTextFile(lastProcessedPostIdFile);
+    const value = await fs.readFile(lastProcessedPostIdFile, "utf-8");
     return parseInt(value.trim(), 10);
 };
 
@@ -19,7 +20,7 @@ export const loadLastProcessedPostId = async (): Promise<number> => {
  */
 export const saveLastProcessedPostId = async (lastProcessedPostId: number) => {
     try {
-        await Deno.writeTextFile(lastProcessedPostIdFile, `${lastProcessedPostId}`);
+        await fs.writeFile(lastProcessedPostIdFile, `${lastProcessedPostId}`, "utf-8");
     } catch (error) {
         console.error("Error saving last processed post ID:", error);
     }
@@ -64,26 +65,41 @@ export const sanitizeHtml = (input: string) => {
     return addSpace;
 };
 
-export const loadAttachments = (status: Status) =>
-    status.media_attachments.reduce((list, attachment) => {
-        const url = attachment.url;
-        const type = attachment.type as "video" | "image";
-        const altText = attachment.description ?? null;
+export const loadAttachments = async (status: Status) => {
+    const validAttachments = status.media_attachments.filter((att) => ["video", "image"].includes(att.type));
+    const attachmentPromises = validAttachments.map(async (attachment) => {
+        const { url, type } = attachment;
+        const mimeType = await getMimeType(url);
 
-        if (!["video", "image"].includes(type)) return list;
+        return {
+            url,
+            type,
+            mimeType,
+            altText: attachment.description ?? null
+        } as Attachment;
+    });
 
-        return [
-            ...list,
-            {
-                url,
-                altText,
-                type
-            } as Attachment
-        ];
-    }, [] as Attachment[]);
+    return await Promise.all(attachmentPromises);
+};
 
 export const urlToUint8Array = async (url: string) => {
     const response = await fetch(url);
     const arrayBuffer = await response.arrayBuffer();
     return new Uint8Array(arrayBuffer);
 };
+
+async function getMimeType(url: string) {
+    try {
+        const response = await fetch(url, { method: "HEAD" });
+
+        if (response.ok) {
+            return response.headers.get("Content-Type");
+        } else {
+            console.warn("Server antwortete mit Status:", response.status);
+            return null;
+        }
+    } catch (error) {
+        console.error("Fehler beim Abrufen des MIME-Types:", error);
+        return null;
+    }
+}

@@ -20,9 +20,9 @@ jobs:
             - name: Checkout repository
               uses: actions/checkout@v4
 
-            - name: Read .deno-version
-              id: deno
-              run: echo "DENO_VERSION=$(cat .deno-version)" >> $GITHUB_OUTPUT
+            - name: Read .nvmrc
+              run: echo "NODE_VERSION=$(awk -F. '{print $1}' .nvmrc)" >> $GITHUB_OUTPUT
+              id: nvm
 
             - name: Login to container registry
               uses: docker/login-action@v3
@@ -54,9 +54,10 @@ jobs:
                   labels: ${{ steps.meta.outputs.labels }}
                   push: true
                   tags: ${{ steps.meta.outputs.tags }}
-                  platforms: linux/amd64,linux/arm64
+                  platforms: linux/amd64,linux/arm64,linux/arm/v7
+
                   build-args: |
-                      DENO_VERSION=${{ steps.deno.outputs.DENO_VERSION }}
+                      NODE_VERSION=${{ steps.nvm.outputs.NODE_VERSION }}
 
     release:
         name: Release
@@ -69,35 +70,19 @@ jobs:
               with:
                   fetch-depth: 0
 
-            - name: Read Deno version
-              id: deno
-              run: echo "DENO_VERSION=$(cat .deno-version)" >> $GITHUB_OUTPUT
+            - name: Read .nvmrc
+              run: echo "NODE_VERSION=$(cat .nvmrc)" >> $GITHUB_OUTPUT
+              id: nvm
 
-            - name: Setup Deno
-              uses: denoland/setup-deno@v1
-              with:
-                  deno-version: ${{ steps.deno.outputs.DENO_VERSION }}
-
-            - name: Build binary
-              run: deno compile --allow-all --output dist/my-app main.ts
-
-            - name: Upload binary to GitHub Release (if tag exists)
-              if: startsWith(github.ref, 'refs/tags/')
-              uses: softprops/action-gh-release@v1
-              with:
-                  files: dist/my-app
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-            - name: Setup Node.js
+            - name: Setup Node
               uses: actions/setup-node@v4
               with:
-                  node-version: 24
+                  node-version: ${{ steps.nvm.outputs.NODE_VERSION }}
 
-            - name: Install dependencies for semantic-release
+            - name: Install
               run: npm ci --ignore-scripts
 
-            - name: Run semantic-release
+            - name: Release
               env:
                   GITHUB_TOKEN: ${{ secrets.PAT_SEMANTIC_RELEASE }}
               run: npx semantic-release

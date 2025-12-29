@@ -1,11 +1,24 @@
-ARG DENO_VERSION=2.5.2
+ARG NODE_VERSION=24
 
-FROM denoland/deno:alpine-${DENO_VERSION}
+# stage 1 (transpile code)
+FROM node:${NODE_VERSION}-alpine AS builder
 
-WORKDIR /usr/src/app
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
 COPY . .
+RUN npm run build
 
-RUN deno install
-RUN deno cache main.ts
+# stage 2 (run code)
+FROM node:${NODE_VERSION}-alpine AS runner
 
-CMD [ "deno", "task", "docker-run" ]
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install --omit=dev
+
+COPY --from=builder /app/dist ./dist
+
+CMD [ "node", "dist/index.js" ]

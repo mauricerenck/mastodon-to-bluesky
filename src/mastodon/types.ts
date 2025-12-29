@@ -2,6 +2,11 @@ import { BlobRef } from "@atproto/api";
 
 type Nullable<T> = null | T;
 
+export type MastodonSettings = {
+    url: string;
+    username: string;
+};
+
 export interface Account {
     id: string;
     username: string;
@@ -125,5 +130,6 @@ export type Attachment = {
     url: string;
     altText: Nullable<string>;
     type: "image" | "video";
+    mimeType: Nullable<string>; // e.g. "image/jpeg"
     blob?: BlobRef;
 };
