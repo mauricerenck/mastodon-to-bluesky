@@ -14,3 +14,6 @@ services:
         #     INTERVAL_MINUTES: 5
         volumes:
             - mastodon-to-bluesky:/usr/src/app/data
+
+volumes:
+    mastodon-to-bluesky:
