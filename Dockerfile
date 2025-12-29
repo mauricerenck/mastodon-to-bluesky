@@ -16,12 +16,13 @@ FROM node:${NODE_VERSION}-alpine AS runner
 
 ENV NODE_ENV=production
 
-WORKDIR /app
+WORKDIR /usr/src/app
 
 COPY package*.json ./
 RUN npm install --omit=dev && npm cache clean --force
 
 COPY --from=builder --chown=node:node /app/dist ./dist
+COPY --from=builder --chown=node:node /app/data ./data
 
 USER node
 
