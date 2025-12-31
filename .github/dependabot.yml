@@ -7,3 +7,8 @@ updates:
       open-pull-requests-limit: 10 # Maximale Anzahl offener PRs gleichzeitig
       labels:
           - "dependencies" # Automatische Labels für die PRs
+      ignore:
+          - dependency-name: "node"
+            versions: [">= 23.0.0"]
+          - dependency-name: "@types/node"
+            versions: [">= 23.0.0"]
