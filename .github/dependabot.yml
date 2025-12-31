@@ -1,0 +1,9 @@
+version: 2
+updates:
+    - package-ecosystem: "npm" # Für Node.js Projekte
+      directory: "/" # Ort der package.json
+      schedule:
+          interval: "weekly" # Wie oft geprüft wird (daily, weekly, monthly)
+      open-pull-requests-limit: 10 # Maximale Anzahl offener PRs gleichzeitig
+      labels:
+          - "dependencies" # Automatische Labels für die PRs
