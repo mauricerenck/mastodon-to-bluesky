@@ -12,7 +12,7 @@
   "author": "Maurice Renck <hello@maurice-renck.de>",
   "license": "MIT",
   "dependencies": {
-    "@atproto/api": "^0.18.15",
+    "@atproto/api": "^0.18.16",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
     "dotenv": "^17.2.3",
