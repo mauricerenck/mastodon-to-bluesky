@@ -4,8 +4,8 @@ on:
         types:
             - created
 env:
-    IMAGE_NAME: ${{ github.repository }}
     REGISTRY: ghcr.io
+    IMAGE_NAME: ${{ github.repository }}
 
 jobs:
     release:
@@ -37,7 +37,7 @@ jobs:
               with:
                   registry: ${{ env.REGISTRY }}
                   repository: ${{ env.IMAGE_NAME }}
-                  target: 'main'
+                  target: "main"
                   tags: |
                       ${{ steps.version.outputs.version-without-v }}
                       ${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}
