@@ -20,7 +20,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.19.15",
-    "@types/sanitize-html": "^2.16.0",
+    "@types/sanitize-html": "^2.16.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
