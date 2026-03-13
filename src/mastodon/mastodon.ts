@@ -1,7 +1,7 @@
 import type { Account, MastodonSettings, Status } from "./types.js";
 
-let settings: MastodonSettings = null!;
-let account: Account = null!;
+let settings: MastodonSettings | null = null;
+let account: Account | null = null;
 
 function loadSettings() {
     const url = process.env.MASTODON_INSTANCE;
@@ -15,6 +15,11 @@ function loadSettings() {
         username
     } as MastodonSettings;
 }
+
+export const resetCache = () => {
+    settings = null;
+    account = null;
+};
 
 /**
  * periodically fetch new Mastodon posts
@@ -48,11 +53,17 @@ export const fetchNewToots = async () => {
 async function getAccountByUsername(instanceUrl: string, username: string) {
     const accountApiURL = `${instanceUrl}/api/v1/accounts/lookup?acct=${username}`;
     const response = await fetch(accountApiURL);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch account for ${username}: ${response.status} ${response.statusText}`);
+    }
     return (await response.json()) as Account;
 }
 
 async function getStatuses(instanceUrl: string, accountId: string) {
     const statusApiUrl = `${instanceUrl}/api/v1/accounts/${accountId}/statuses`;
     const response = await fetch(statusApiUrl);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch statuses for account ${accountId}: ${response.status} ${response.statusText}`);
+    }
     return (await response.json()) as Status[];
 }
