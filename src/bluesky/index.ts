@@ -1,1 +1,1 @@
-export { login, post } from "./bluesky.js";
+export { login, post, resetCache } from "./bluesky.js";

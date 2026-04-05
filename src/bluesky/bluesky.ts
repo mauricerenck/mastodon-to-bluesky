@@ -6,6 +6,11 @@ import type { BlueSkySettings } from "./types.js";
 let settings: BlueSkySettings = null!;
 let agent: AtpAgent = null!;
 
+export const resetCache = () => {
+    settings = null!;
+    agent = null!;
+};
+
 export const login = async () => {
     if (!settings) {
         settings = loadSettings();
