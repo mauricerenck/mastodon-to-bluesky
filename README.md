@@ -34,7 +34,18 @@ npm install
 
 ### Docker 🐳
 
-- Docker and Docker Compose should installed
+#### Build Image
+
+```bash
+docker build -t mastodon-to-bluesky .
+
+# optional with Node version
+docker build --build-arg NODE_VERSION=24 -t mastodon-to-bluesky .
+```
+
+#### Compose
+
+- *Docker* and *Docker Compose* should installed
 - copy [docker-compose.yml](https://github.com/mauricerenck/mastodon-to-bluesky/blob/main/docker-compose.yml) to your local machine
 - change environment variables
 - start via `docker compose up -d`
