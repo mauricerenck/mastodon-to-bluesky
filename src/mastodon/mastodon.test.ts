@@ -247,10 +247,10 @@ describe("mastodon", () => {
 
             // account lookup should be called once, statuses twice
             const accountCalls = fetchMock.mock.calls.filter(
-                ([url]: [string]) => typeof url === "string" && url.includes("/accounts/lookup")
+                ([url]: [string | URL | Request]) => typeof url === "string" && url.includes("/accounts/lookup")
             );
             const statusCalls = fetchMock.mock.calls.filter(
-                ([url]: [string]) => typeof url === "string" && url.includes("/statuses")
+                ([url]: [string | URL | Request]) => typeof url === "string" && url.includes("/statuses")
             );
             expect(accountCalls).toHaveLength(1);
             expect(statusCalls).toHaveLength(2);
@@ -274,7 +274,7 @@ describe("mastodon", () => {
             await fetchNewToots();
 
             const accountCalls = fetchMock.mock.calls.filter(
-                ([url]: [string]) => typeof url === "string" && url.includes("/accounts/lookup")
+                ([url]: [string | URL | Request]) => typeof url === "string" && url.includes("/accounts/lookup")
             );
             expect(accountCalls).toHaveLength(2);
         });
