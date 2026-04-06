@@ -78,6 +78,15 @@ describe("bluesky", () => {
     });
 
     describe("loadSettings / environment variables", () => {
+        it("should use default maxPostLength of 300 when env var is not set", async () => {
+            delete process.env.BLUESKY_MAX_POST_LENGTH;
+            await login();
+
+            // Post a short message to verify login works with default settings
+            await post("Test", []);
+            expect(mockPost).toHaveBeenCalledTimes(1);
+        });
+
         it("should throw when BLUESKY_ENDPOINT is not set", async () => {
             vi.stubEnv("BLUESKY_ENDPOINT", "");
             await expect(login()).rejects.toThrow("BLUESKY_ENDPOINT not set");

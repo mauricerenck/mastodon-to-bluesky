@@ -240,6 +240,34 @@ describe("main", () => {
             expect(mockSaveLastProcessedPostId).toHaveBeenCalledWith(new Date("2026-04-02T14:00:00.000Z").getTime());
         });
 
+        it("should not update newTimestampId when a later status has an equal or older timestamp", async () => {
+            const status1 = makeStatus({
+                id: "1",
+                created_at: "2026-04-02T14:00:00.000Z",
+                content: "First"
+            });
+            const status2 = makeStatus({
+                id: "2",
+                created_at: "2026-04-02T12:00:00.000Z",
+                content: "Second"
+            });
+            mockLoadLastProcessedPostId.mockResolvedValue(new Date("2026-04-01T00:00:00.000Z").getTime());
+            // After reverse: status2 (12:00) first, then status1 (14:00)
+            // Then add a third with same timestamp as status1 to trigger the false branch
+            const status3 = makeStatus({
+                id: "3",
+                created_at: "2026-04-02T14:00:00.000Z",
+                content: "Third"
+            });
+            mockFetchNewToots.mockResolvedValue([status1, status3, status2]);
+            mockLoadAttachments.mockResolvedValue([]);
+
+            await importMain();
+
+            // The newest timestamp should still be 14:00
+            expect(mockSaveLastProcessedPostId).toHaveBeenCalledWith(new Date("2026-04-02T14:00:00.000Z").getTime());
+        });
+
         it("should not save lastProcessedPostId when no statuses returned", async () => {
             mockFetchNewToots.mockResolvedValue([]);
 
