@@ -8,7 +8,8 @@
     "build": "tsc",
     "start": "node dist/main.js",
     "dev": "ts-node src/main.ts",
-    "test": "vitest"
+    "test": "vitest",
+    "coverage": "vitest run --coverage"
   },
   "author": "Maurice Renck <hello@maurice-renck.de>",
   "license": "MIT",
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@types/node": "^22.19.15",
     "@types/sanitize-html": "^2.16.1",
+    "@vitest/coverage-v8": "^4.1.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
     "vitest": "^4.1.2"
