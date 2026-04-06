@@ -12,8 +12,6 @@ This scripts listens to your Mastodon account and crossposts your toots to your 
 | --------------------------- | ----------------------- | ------------------------- | ----------------- |
 | ![Statements](https://img.shields.io/badge/statements-100%25-brightgreen.svg?style=flat) | ![Branches](https://img.shields.io/badge/branches-96.36%25-brightgreen.svg?style=flat) | ![Functions](https://img.shields.io/badge/functions-100%25-brightgreen.svg?style=flat) | ![Lines](https://img.shields.io/badge/lines-100%25-brightgreen.svg?style=flat) |
 
----
-
 ## Installation
 
 You can run the script directly using [NodeJS](https://www.nodejs.org) or you can use our Docker image.
