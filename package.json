@@ -9,7 +9,7 @@
     "start": "node dist/main.js",
     "dev": "ts-node src/main.ts",
     "test": "vitest",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage && istanbul-badges-readme"
   },
   "author": "Maurice Renck <hello@maurice-renck.de>",
   "license": "MIT",
@@ -24,6 +24,7 @@
     "@types/node": "^22.19.15",
     "@types/sanitize-html": "^2.16.1",
     "@vitest/coverage-v8": "^4.1.2",
+    "istanbul-badges-readme": "^1.9.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
     "vitest": "^4.1.2"
