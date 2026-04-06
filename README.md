@@ -2,13 +2,9 @@
 
 Crosspost from Mastodon to Bluesky
 
----
+![GitHub release](https://img.shields.io/github/release/mauricerenck/mastodon-to-bluesky.svg?maxAge=1800) ![License](https://img.shields.io/github/license/mashape/apistatus.svg)
 
 This scripts listens to your Mastodon account and crossposts your toots to your Bluesky account. It uses the Mastodon API and the Bluesky API to achieve this. The script is written in Typescript and can be run on your local machine or on a server.
-
----
-
-![GitHub release](https://img.shields.io/github/release/mauricerenck/mastodon-to-bluesky.svg?maxAge=1800) ![License](https://img.shields.io/github/license/mashape/apistatus.svg)
 
 ## Coverage
 
