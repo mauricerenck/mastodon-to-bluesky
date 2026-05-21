@@ -7,7 +7,7 @@
         "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
-        "moduleResolution": "node"
+        "moduleResolution": "bundler"
     },
     "exclude": ["vitest.config.ts"]
 }
