@@ -1,7 +1,7 @@
 ARG NODE_VERSION=24
 
 # stage 1 (transpile code)
-FROM node:${NODE_VERSION}-alpine AS builder
+FROM node:${NODE_VERSION}-slim AS builder
 
 WORKDIR /app
 
@@ -12,7 +12,7 @@ COPY . .
 RUN npm run build
 
 # stage 2 (run code)
-FROM node:${NODE_VERSION}-alpine AS runner
+FROM node:${NODE_VERSION}-slim AS runner
 
 ENV NODE_ENV=production
 
