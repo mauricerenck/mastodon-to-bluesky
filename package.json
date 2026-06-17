@@ -21,7 +21,7 @@
     "sanitize-html": "^2.17.4"
   },
   "devDependencies": {
-    "@types/node": "^22.19.20",
+    "@types/node": "^22.19.21",
     "@types/sanitize-html": "^2.16.1",
     "@vitest/coverage-v8": "^4.1.8",
     "istanbul-badges-readme": "^1.9.0",
