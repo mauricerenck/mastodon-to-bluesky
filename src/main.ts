@@ -3,6 +3,7 @@ import * as bluesky from "./bluesky/index.js";
 import * as mastodon from "./mastodon/index.js";
 import { getIntegerEnv } from "./config.js";
 import { logger } from "./logger.js";
+import { buildConsecutiveThreadPlan } from "./threading.js";
 import { loadAttachments, loadLastProcessedPostId, saveLastProcessedPostId } from "./utils.js";
 
 const intervalMinutes = getIntegerEnv("INTERVAL_MINUTES", {
@@ -25,10 +26,8 @@ async function main() {
 
         let newTimestampId = 0;
 
-        const statusesInOrder = statuses.reverse();
-        const withThreads = statusesInOrder.filter(
-            (status, index) => status.in_reply_to_id === null || (index > 0 && status.in_reply_to_id === statusesInOrder[index - 1].id)
-        );
+        const threadPlan = buildConsecutiveThreadPlan(statuses);
+        const statusesInOrder = [...statuses].reverse();
 
         for (const status of statusesInOrder) {
             const currentTimestampId = new Date(status.created_at).getTime();
@@ -40,7 +39,7 @@ async function main() {
         let blueskyThread: BlueskyPostResponse[] = [];
         let lastBlueskyPost: BlueskyPostResponse | null = null;
 
-        for (const status of withThreads) {
+        for (const { status, continuesThread } of threadPlan) {
             const currentTimestampId = new Date(status.created_at).getTime();
             logger.debug("Evaluating status", { statusId: status.id, createdAt: status.created_at, currentTimestampId });
 
@@ -49,7 +48,7 @@ async function main() {
                     logger.info("Posting status to Bluesky", { statusId: status.id, createdAt: status.created_at });
 
                     const attachments = await loadAttachments(status);
-                    if (status.in_reply_to_id !== null && lastBlueskyPost) {
+                    if (continuesThread && lastBlueskyPost) {
                         blueskyThread = [...blueskyThread, lastBlueskyPost];
                     } else {
                         blueskyThread = [];
