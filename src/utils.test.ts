@@ -4,11 +4,13 @@ import type { Status, MediaAttachment } from "./mastodon/types.js";
 // --- Mock fs/promises ---
 const mockReadFile = vi.fn();
 const mockWriteFile = vi.fn();
+const mockMkdir = vi.fn();
 
 vi.mock("fs/promises", () => ({
     default: {
         readFile: (...args: unknown[]) => mockReadFile(...args),
-        writeFile: (...args: unknown[]) => mockWriteFile(...args)
+        writeFile: (...args: unknown[]) => mockWriteFile(...args),
+        mkdir: (...args: unknown[]) => mockMkdir(...args)
     }
 }));
 
@@ -50,10 +52,22 @@ describe("utils", () => {
             expect(result).toBe(789);
         });
 
-        it("should propagate error when file does not exist", async () => {
-            mockReadFile.mockRejectedValue(new Error("ENOENT"));
+        it("should initialize state with 0 when file does not exist", async () => {
+            mockReadFile.mockRejectedValue({ code: "ENOENT" });
+            mockMkdir.mockResolvedValue(undefined);
+            mockWriteFile.mockResolvedValue(undefined);
 
-            await expect(loadLastProcessedPostId()).rejects.toThrow("ENOENT");
+            const result = await loadLastProcessedPostId();
+
+            expect(result).toBe(0);
+            expect(mockMkdir).toHaveBeenCalledWith(expect.stringContaining("data"), { recursive: true });
+            expect(mockWriteFile).toHaveBeenCalledWith(expect.stringContaining("lastProcessedPostId.txt"), "0", "utf-8");
+        });
+
+        it("should throw when state file contains invalid number", async () => {
+            mockReadFile.mockResolvedValue("not-a-number");
+
+            await expect(loadLastProcessedPostId()).rejects.toThrow("Invalid value");
         });
     });
 
@@ -61,10 +75,12 @@ describe("utils", () => {
 
     describe("saveLastProcessedPostId", () => {
         it("should write the post ID to file", async () => {
+            mockMkdir.mockResolvedValue(undefined);
             mockWriteFile.mockResolvedValue(undefined);
 
             await saveLastProcessedPostId(42);
 
+            expect(mockMkdir).toHaveBeenCalledWith(expect.stringContaining("data"), { recursive: true });
             expect(mockWriteFile).toHaveBeenCalledWith(
                 expect.stringContaining("lastProcessedPostId.txt"),
                 "42",
@@ -72,11 +88,11 @@ describe("utils", () => {
             );
         });
 
-        it("should not throw when write fails (logs error instead)", async () => {
+        it("should throw when write fails", async () => {
+            mockMkdir.mockResolvedValue(undefined);
             mockWriteFile.mockRejectedValue(new Error("EACCES"));
 
-            // saveLastProcessedPostId catches the error internally
-            await expect(saveLastProcessedPostId(42)).resolves.toBeUndefined();
+            await expect(saveLastProcessedPostId(42)).rejects.toThrow("EACCES");
         });
     });
 

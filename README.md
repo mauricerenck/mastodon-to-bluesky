@@ -4,7 +4,7 @@ Crosspost from Mastodon to Bluesky
 
 ![GitHub release](https://img.shields.io/github/release/mauricerenck/mastodon-to-bluesky.svg?maxAge=1800) ![License](https://img.shields.io/github/license/mashape/apistatus.svg)
 
-This scripts listens to your Mastodon account and crossposts your toots to your Bluesky account. It uses the Mastodon API and the Bluesky API to achieve this. The script is written in Typescript and can be run on your local machine or on a server.
+This script polls your Mastodon account and crossposts your toots to your Bluesky account. It uses the Mastodon API and the Bluesky API to achieve this. The script is written in Typescript and can be run on your local machine or on a server.
 
 ## Coverage
 
@@ -58,14 +58,17 @@ docker build --build-arg NODE_VERSION=24 -t mastodon-to-bluesky .
 Create a `.env` file in the root directory of the project and add the following variables:
 
 ```bash
-MASTODON_INSTANCE: 'https://mastodon.instance'
-MASTODON_USER: 'username'
-BLUESKY_ENDPOINT: 'https://bsky.social'
-BLUESKY_HANDLE: 'USERNAME.bsky.social'
-BLUESKY_PASSWORD: 'PASSWORD'
-BLUESKY_MAX_POST_LENGTH: 300
-INTERVAL_MINUTES: 5
+MASTODON_INSTANCE=https://mastodon.instance
+MASTODON_USER=username
+BLUESKY_ENDPOINT=https://bsky.social
+BLUESKY_HANDLE=USERNAME.bsky.social
+BLUESKY_PASSWORD=PASSWORD
+BLUESKY_MAX_POST_LENGTH=300
+INTERVAL_MINUTES=5
+LOG_LEVEL=info
 ```
+
+`INTERVAL_MINUTES` controls the polling interval in minutes.
 
 ---
 

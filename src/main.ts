@@ -1,21 +1,27 @@
 import "dotenv/config";
 import * as bluesky from "./bluesky/index.js";
 import * as mastodon from "./mastodon/index.js";
+import { getIntegerEnv } from "./config.js";
+import { logger } from "./logger.js";
 import { loadAttachments, loadLastProcessedPostId, saveLastProcessedPostId } from "./utils.js";
 
-const intervalMinutes = parseInt(process.env.INTERVAL_MINUTES ?? "5");
-console.log("⏱️", `${intervalMinutes} minutes`);
+const intervalMinutes = getIntegerEnv("INTERVAL_MINUTES", {
+    defaultValue: 5,
+    min: 1,
+    max: 1440
+});
+logger.info("Configured polling interval", { intervalMinutes });
 
 async function main() {
     type BlueskyPostResponse = Awaited<ReturnType<typeof bluesky.post>>;
 
     // Variable to store the last processed Mastodon post ID
     let lastProcessedPostId = await loadLastProcessedPostId();
-    console.log("📅", lastProcessedPostId);
+    logger.info("Loaded last processed post marker", { lastProcessedPostId });
 
     try {
         const statuses = await mastodon.fetchNewToots();
-        console.log("🦢", `load ${statuses.length} toots`);
+        logger.info("Fetched Mastodon statuses", { count: statuses.length });
 
         let newTimestampId = 0;
 
@@ -36,11 +42,11 @@ async function main() {
 
         for (const status of withThreads) {
             const currentTimestampId = new Date(status.created_at).getTime();
-            console.log("🐛", status.created_at, currentTimestampId);
+            logger.debug("Evaluating status", { statusId: status.id, createdAt: status.created_at, currentTimestampId });
 
             if (currentTimestampId > lastProcessedPostId && lastProcessedPostId != 0) {
                 try {
-                    console.log("📧 posting to BlueSky", status.id, status.created_at);
+                    logger.info("Posting status to Bluesky", { statusId: status.id, createdAt: status.created_at });
 
                     const attachments = await loadAttachments(status);
                     if (status.in_reply_to_id !== null && lastBlueskyPost) {
@@ -51,7 +57,12 @@ async function main() {
 
                     lastBlueskyPost = await bluesky.post(status.content, attachments, blueskyThread);
                 } catch (error) {
-                    console.error("🔥 can't post to Bluesky", status.id, status.created_at, currentTimestampId, error);
+                    logger.error("Posting to Bluesky failed", {
+                        statusId: status.id,
+                        createdAt: status.created_at,
+                        currentTimestampId,
+                        error
+                    });
                 }
             }
         }
@@ -59,21 +70,34 @@ async function main() {
         if (newTimestampId > 0) {
             lastProcessedPostId = newTimestampId;
             await saveLastProcessedPostId(lastProcessedPostId);
+            logger.info("Persisted new last processed post marker", { lastProcessedPostId });
         }
     } catch (error) {
-        console.error("🔥", error);
+        logger.error("Main processing cycle failed", { error });
     }
 }
 
 (async () => {
+    let isMainRunInProgress = false;
+
     try {
         await bluesky.login();
         await main();
 
         setInterval(async () => {
-            await main();
+            if (isMainRunInProgress) {
+                logger.warn("Skipping polling tick because previous cycle is still running");
+                return;
+            }
+
+            isMainRunInProgress = true;
+            try {
+                await main();
+            } finally {
+                isMainRunInProgress = false;
+            }
         }, intervalMinutes * 60 * 1000);
     } catch (error) {
-        console.error(error);
+        logger.error("Application startup failed", { error });
     }
 })();

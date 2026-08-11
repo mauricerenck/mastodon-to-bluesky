@@ -101,6 +101,11 @@ describe("bluesky", () => {
             vi.stubEnv("BLUESKY_PASSWORD", "");
             await expect(login()).rejects.toThrow("BLUESKY_PASSWORD");
         });
+
+        it("should throw when BLUESKY_MAX_POST_LENGTH is invalid", async () => {
+            vi.stubEnv("BLUESKY_MAX_POST_LENGTH", "not-a-number");
+            await expect(login()).rejects.toThrow("BLUESKY_MAX_POST_LENGTH must be an integer.");
+        });
     });
 
     describe("login", () => {

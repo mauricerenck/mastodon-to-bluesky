@@ -130,6 +130,12 @@ describe("main", () => {
             await importMain();
             expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 5 * 60 * 1000);
         });
+
+        it("should fail module import when INTERVAL_MINUTES is invalid", async () => {
+            vi.stubEnv("INTERVAL_MINUTES", "invalid");
+
+            await expect(import("./main.js")).rejects.toThrow("INTERVAL_MINUTES must be an integer.");
+        });
     });
 
     // ── Post processing ──────────────────────────────────────────────
@@ -401,6 +407,34 @@ describe("main", () => {
 
             expect(intervalCallback).toBeNull();
             consoleSpy.mockRestore();
+        });
+
+        it("should skip overlapping interval runs", async () => {
+            const resolveFetchRef: { current: (() => void) | null } = { current: null };
+            mockLoadLastProcessedPostId.mockResolvedValue(0);
+            mockFetchNewToots
+                .mockResolvedValueOnce([])
+                .mockImplementation(
+                    () =>
+                        new Promise<void>((resolve) => {
+                            resolveFetchRef.current = () => resolve();
+                        })
+                );
+
+            await importMain();
+            expect(intervalCallback).not.toBeNull();
+
+            const firstTickPromise = (intervalCallback as () => Promise<void>)();
+            const secondTickPromise = (intervalCallback as () => Promise<void>)();
+            await flushPromises();
+
+            expect(mockFetchNewToots).toHaveBeenCalledTimes(2);
+
+            if (resolveFetchRef.current) {
+                resolveFetchRef.current();
+            }
+            await firstTickPromise;
+            await secondTickPromise;
         });
     });
 });

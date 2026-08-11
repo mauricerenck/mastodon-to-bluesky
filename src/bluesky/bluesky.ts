@@ -1,4 +1,6 @@
 import { RichText, AtpAgent } from "@atproto/api";
+import { getIntegerEnv } from "../config.js";
+import { logger } from "../logger.js";
 import type { Attachment } from "../mastodon/types.js";
 import { sanitizeHtml, splitText, urlToUint8Array } from "../utils.js";
 import type { BlueSkySettings } from "./types.js";
@@ -37,7 +39,11 @@ function loadSettings() {
     const password = process.env.BLUESKY_PASSWORD;
     if (!password) throw new Error("BLUESKY_PASSWORD");
 
-    const maxPostLength = parseInt(process.env.BLUESKY_MAX_POST_LENGTH ?? "300");
+    const maxPostLength = getIntegerEnv("BLUESKY_MAX_POST_LENGTH", {
+        defaultValue: 300,
+        min: 50,
+        max: 3000
+    });
 
     return {
         url,
@@ -112,10 +118,10 @@ async function loginInternal(url: string, handle: string, password: string): Pro
         });
         if (!response.success) throw new Error("login failed");
 
-        console.log("🔒 Successfully logged in to Bluesky");
+        logger.info("Successfully logged in to Bluesky", { handle });
         return agent;
     } catch (error) {
-        console.error("🔒 Login to Bluesky failed:", error);
+        logger.error("Login to Bluesky failed", { handle, error });
         throw error;
     }
 }
@@ -126,7 +132,7 @@ async function uploadImages(attachments: readonly Attachment[]) {
 
     for (const image of images) {
         if (!image.mimeType) {
-            console.log("skip image without mime-type", image.url);
+            logger.warn("Skipping image upload without mime-type", { url: image.url });
             continue;
         }
 
@@ -143,7 +149,7 @@ async function uploadImages(attachments: readonly Attachment[]) {
                 blob: data.blob
             });
         } catch (err) {
-            console.error("can't upload image", image.url, err);
+            logger.error("Image upload failed", { url: image.url, error: err });
         }
     }
 

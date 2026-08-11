@@ -2,17 +2,37 @@ import fs from "fs/promises";
 import path from "path";
 import sanitize from "sanitize-html";
 import type { Status, Attachment } from "./mastodon/types.js";
+import { logger } from "./logger.js";
 
 // File to store the last processed Mastodon post ID
 const lastProcessedPostIdFile = path.join(path.resolve(), "data", "lastProcessedPostId.txt");
+const dataDirectory = path.dirname(lastProcessedPostIdFile);
 
 /**
  * Load the last processed post ID from the file
  * @returns
  */
 export const loadLastProcessedPostId = async (): Promise<number> => {
-    const value = await fs.readFile(lastProcessedPostIdFile, "utf-8");
-    return parseInt(value.trim(), 10);
+    try {
+        const value = await fs.readFile(lastProcessedPostIdFile, "utf-8");
+        const parsedValue = parseInt(value.trim(), 10);
+
+        if (Number.isNaN(parsedValue)) {
+            throw new Error(`Invalid value in ${lastProcessedPostIdFile}: "${value.trim()}"`);
+        }
+
+        return parsedValue;
+    } catch (error) {
+        const nodeError = error as NodeJS.ErrnoException;
+        if (nodeError.code !== "ENOENT") {
+            throw error;
+        }
+
+        await fs.mkdir(dataDirectory, { recursive: true });
+        await fs.writeFile(lastProcessedPostIdFile, "0", "utf-8");
+        logger.info("Initialized missing state file", { file: lastProcessedPostIdFile });
+        return 0;
+    }
 };
 
 /**
@@ -20,9 +40,11 @@ export const loadLastProcessedPostId = async (): Promise<number> => {
  */
 export const saveLastProcessedPostId = async (lastProcessedPostId: number) => {
     try {
+        await fs.mkdir(dataDirectory, { recursive: true });
         await fs.writeFile(lastProcessedPostIdFile, `${lastProcessedPostId}`, "utf-8");
     } catch (error) {
-        console.error("Error saving last processed post ID:", error);
+        logger.error("Failed to persist last processed post ID", { lastProcessedPostId, error });
+        throw error;
     }
 };
 
@@ -95,11 +117,11 @@ async function getMimeType(url: string) {
         if (response.ok) {
             return response.headers.get("Content-Type");
         } else {
-            console.warn("Server antwortete mit Status:", response.status);
+            logger.warn("Failed to fetch mime-type: unexpected status", { url, status: response.status });
             return null;
         }
     } catch (error) {
-        console.error("Fehler beim Abrufen des MIME-Types:", error);
+        logger.error("Failed to fetch mime-type", { url, error });
         return null;
     }
 }
