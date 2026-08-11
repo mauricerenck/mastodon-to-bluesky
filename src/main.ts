@@ -7,6 +7,8 @@ const intervalMinutes = parseInt(process.env.INTERVAL_MINUTES ?? "5");
 console.log("⏱️", `${intervalMinutes} minutes`);
 
 async function main() {
+    type BlueskyPostResponse = Awaited<ReturnType<typeof bluesky.post>>;
+
     // Variable to store the last processed Mastodon post ID
     let lastProcessedPostId = await loadLastProcessedPostId();
     console.log("📅", lastProcessedPostId);
@@ -17,20 +19,37 @@ async function main() {
 
         let newTimestampId = 0;
 
-        for (const status of statuses.reverse()) {
-            const currentTimestampId = new Date(status.created_at).getTime();
-            console.log("🐛", status.created_at, currentTimestampId);
+        const statusesInOrder = statuses.reverse();
+        const withThreads = statusesInOrder.filter(
+            (status, index) => status.in_reply_to_id === null || (index > 0 && status.in_reply_to_id === statusesInOrder[index - 1].id)
+        );
 
+        for (const status of statusesInOrder) {
+            const currentTimestampId = new Date(status.created_at).getTime();
             if (currentTimestampId > newTimestampId) {
                 newTimestampId = currentTimestampId;
             }
+        }
+
+        let blueskyThread: BlueskyPostResponse[] = [];
+        let lastBlueskyPost: BlueskyPostResponse | null = null;
+
+        for (const status of withThreads) {
+            const currentTimestampId = new Date(status.created_at).getTime();
+            console.log("🐛", status.created_at, currentTimestampId);
 
             if (currentTimestampId > lastProcessedPostId && lastProcessedPostId != 0) {
                 try {
                     console.log("📧 posting to BlueSky", status.id, status.created_at);
 
                     const attachments = await loadAttachments(status);
-                    bluesky.post(status.content, attachments);
+                    if (status.in_reply_to_id !== null && lastBlueskyPost) {
+                        blueskyThread = [...blueskyThread, lastBlueskyPost];
+                    } else {
+                        blueskyThread = [];
+                    }
+
+                    lastBlueskyPost = await bluesky.post(status.content, attachments, blueskyThread);
                 } catch (error) {
                     console.error("🔥 can't post to Bluesky", status.id, status.created_at, currentTimestampId, error);
                 }

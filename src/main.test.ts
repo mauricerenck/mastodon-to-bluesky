@@ -32,6 +32,8 @@ function makeStatus(overrides: Partial<Status> = {}): Status {
     return {
         id: "1",
         created_at: "2026-04-01T12:00:00.000Z",
+        in_reply_to_id: null,
+        in_reply_to_account_id: null,
         sensitive: false,
         spoiler_text: "",
         visibility: "public",
@@ -41,6 +43,7 @@ function makeStatus(overrides: Partial<Status> = {}): Status {
         reblogs_count: 0,
         favourites_count: 0,
         content: "Hello World",
+        reblog: null,
         account: {
             id: "1",
             username: "user",
@@ -83,7 +86,7 @@ describe("main", () => {
         mockLoadLastProcessedPostId.mockResolvedValue(0);
         mockSaveLastProcessedPostId.mockResolvedValue(undefined);
         mockLoadAttachments.mockResolvedValue([]);
-        mockPost.mockResolvedValue(undefined);
+        mockPost.mockResolvedValue({ uri: "at://did:plc:abc/app.bsky.feed.post/1", cid: "cid-1" });
 
         vi.stubEnv("INTERVAL_MINUTES", "5");
     });
@@ -170,7 +173,7 @@ describe("main", () => {
 
             await importMain();
 
-            expect(mockPost).toHaveBeenCalledWith("Hello Bluesky!", []);
+            expect(mockPost).toHaveBeenCalledWith("Hello Bluesky!", [], []);
         });
 
         it("should not post statuses older than lastProcessedPostId", async () => {
@@ -205,8 +208,8 @@ describe("main", () => {
             await importMain();
 
             expect(mockPost).toHaveBeenCalledTimes(2);
-            expect(mockPost).toHaveBeenNthCalledWith(1, "First", []);
-            expect(mockPost).toHaveBeenNthCalledWith(2, "Second", []);
+            expect(mockPost).toHaveBeenNthCalledWith(1, "First", [], []);
+            expect(mockPost).toHaveBeenNthCalledWith(2, "Second", [], []);
         });
 
         it("should pass attachments to bluesky post", async () => {
@@ -225,7 +228,7 @@ describe("main", () => {
             await importMain();
 
             expect(mockLoadAttachments).toHaveBeenCalledWith(status);
-            expect(mockPost).toHaveBeenCalledWith("Post with image", attachments);
+            expect(mockPost).toHaveBeenCalledWith("Post with image", attachments, []);
         });
 
         it("should save the newest timestamp as lastProcessedPostId", async () => {
@@ -321,8 +324,37 @@ describe("main", () => {
             await importMain();
 
             expect(mockPost).toHaveBeenCalledTimes(1);
-            expect(mockPost).toHaveBeenCalledWith("Second", []);
+            expect(mockPost).toHaveBeenCalledWith("Second", [], []);
             consoleSpy.mockRestore();
+        });
+
+        it("should post consecutive self replies as a bluesky thread", async () => {
+            const root = makeStatus({
+                id: "1",
+                created_at: "2026-04-02T12:00:00.000Z",
+                content: "Root post",
+                in_reply_to_id: null
+            });
+            const reply = makeStatus({
+                id: "2",
+                created_at: "2026-04-02T12:05:00.000Z",
+                content: "Reply post",
+                in_reply_to_id: "1"
+            });
+            mockLoadLastProcessedPostId.mockResolvedValue(new Date("2026-04-01T00:00:00.000Z").getTime());
+            // API returns newest first
+            mockFetchNewToots.mockResolvedValue([reply, root]);
+            mockLoadAttachments.mockResolvedValue([]);
+
+            const rootRef = { uri: "at://did:plc:abc/app.bsky.feed.post/root", cid: "cid-root" };
+            const replyRef = { uri: "at://did:plc:abc/app.bsky.feed.post/reply", cid: "cid-reply" };
+            mockPost.mockResolvedValueOnce(rootRef).mockResolvedValueOnce(replyRef);
+
+            await importMain();
+
+            expect(mockPost).toHaveBeenCalledTimes(2);
+            expect(mockPost).toHaveBeenNthCalledWith(1, "Root post", [], []);
+            expect(mockPost).toHaveBeenNthCalledWith(2, "Reply post", [], [rootRef]);
         });
 
         it("should still save lastProcessedPostId when loadAttachments fails", async () => {

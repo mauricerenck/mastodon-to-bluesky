@@ -34,12 +34,15 @@ export const fetchNewToots = async () => {
     if (!account) {
         account = await getAccountByUsername(settings.url, settings.username);
     }
+    const accountId = account.id;
 
     try {
-        const allStatuses = (await getStatuses(settings.url, account.id)).filter(
+        const allStatuses = (await getStatuses(settings.url, accountId)).filter(
             // filter replies and re-blogs
             (status) =>
-                status.in_reply_to_id === null && status.in_reply_to_account_id === null && status.reblog === null
+                ((status.in_reply_to_id === null && status.in_reply_to_account_id === null) ||
+                    (status.in_reply_to_id !== null && status.in_reply_to_account_id === accountId)) &&
+                status.reblog === null
         );
 
         //return lastProcessedPostId === 0 ? allStatuses : findAfterDate(allStatuses, new Date(lastProcessedPostId));

@@ -5,6 +5,9 @@ import type { BlueSkySettings } from "./types.js";
 
 let settings: BlueSkySettings = null!;
 let agent: AtpAgent = null!;
+type BlueskyPostResponse = Awaited<ReturnType<AtpAgent["post"]>>;
+type BlueskyReplyRef = { root: BlueskyPostResponse; parent: BlueskyPostResponse };
+type BlueskyMessage = Awaited<ReturnType<typeof createBlueskyMessage>> & { reply?: BlueskyReplyRef };
 
 export const resetCache = () => {
     settings = null!;
@@ -44,11 +47,25 @@ function loadSettings() {
     } as BlueSkySettings;
 }
 
-export const post = async (message: string, attachments: Attachment[]) => {
+export const post = async (
+    message: string,
+    attachments: readonly Attachment[],
+    blueskyThread: readonly BlueskyPostResponse[] = []
+): Promise<BlueskyPostResponse> => {
     const messageParts = splitText(sanitizeHtml(message), settings.maxPostLength);
     const uploadedImages = await uploadImages(attachments);
 
-    const rootMessage = await createBlueskyMessage(messageParts[0]);
+    let rootMessage: BlueskyMessage = await createBlueskyMessage(messageParts[0]);
+    if (blueskyThread.length > 0) {
+        rootMessage = {
+            ...rootMessage,
+            reply: {
+                root: blueskyThread[0],
+                parent: blueskyThread[blueskyThread.length - 1]
+            }
+        };
+    }
+
     const embedPart =
         uploadedImages.length === 0
             ? {}
@@ -67,20 +84,22 @@ export const post = async (message: string, attachments: Attachment[]) => {
     });
 
     if (messageParts.length === 1) {
-        return;
+        return rootMessageResponse;
     }
 
-    let replyMessageResponse = null;
+    let replyMessageResponse: BlueskyPostResponse | null = null;
     for (let index = 1; index < messageParts.length; index++) {
         const replyMessage = await createBlueskyMessage(messageParts[index]);
         replyMessageResponse = await agent.post({
             ...replyMessage,
             reply: {
-                root: rootMessageResponse,
+                root: blueskyThread.length > 0 ? blueskyThread[0] : rootMessageResponse,
                 parent: replyMessageResponse ?? rootMessageResponse
             }
         });
     }
+
+    return replyMessageResponse ?? rootMessageResponse;
 };
 
 async function loginInternal(url: string, handle: string, password: string): Promise<AtpAgent> {
@@ -101,7 +120,7 @@ async function loginInternal(url: string, handle: string, password: string): Pro
     }
 }
 
-async function uploadImages(attachments: Attachment[]) {
+async function uploadImages(attachments: readonly Attachment[]) {
     const images = attachments.filter((attachment) => attachment.type === "image");
     const uploadedImages = [] as Attachment[];
 

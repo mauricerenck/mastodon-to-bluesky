@@ -333,5 +333,24 @@ describe("bluesky", () => {
                 expect(replyCall.embed).toBeUndefined();
             }
         });
+
+        it("should continue an existing bluesky thread", async () => {
+            const existingRoot = { uri: "at://existing/root", cid: "existing-root" };
+            const existingParent = { uri: "at://existing/parent", cid: "existing-parent" };
+            const newReply = { uri: "at://new/reply", cid: "new-reply" };
+            mockPost.mockResolvedValueOnce(newReply);
+
+            await post("Reply in existing thread", [], [existingRoot, existingParent]);
+
+            expect(mockPost).toHaveBeenCalledTimes(1);
+            expect(mockPost).toHaveBeenCalledWith({
+                text: "Reply in existing thread",
+                facets: [],
+                reply: {
+                    root: existingRoot,
+                    parent: existingParent
+                }
+            });
+        });
     });
 });
