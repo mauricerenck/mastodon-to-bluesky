@@ -24,16 +24,60 @@ const activeLevel = parseLogLevel();
 
 const shouldLog = (level: LogLevel) => levelPriority[level] >= levelPriority[activeLevel];
 
+function serializeError(error: unknown, seen = new WeakSet<object>()): Record<string, unknown> {
+    if (error instanceof Error) {
+        if (seen.has(error)) {
+            return { name: error.name, message: error.message };
+        }
+
+        seen.add(error);
+        const errorWithCause = error as Error & { cause?: unknown };
+        const enumerableProperties = Object.fromEntries(Object.entries(error).filter(([key]) => key !== "cause"));
+
+        return {
+            ...enumerableProperties,
+            name: error.name,
+            message: error.message,
+            ...(error.stack ? { stack: error.stack } : {}),
+            ...(errorWithCause.cause !== undefined ? { cause: serializeError(errorWithCause.cause, seen) } : {})
+        };
+    }
+
+    if (typeof error === "object" && error !== null) {
+        if (seen.has(error)) {
+            return { message: "[Circular value]" };
+        }
+
+        seen.add(error);
+        return Object.fromEntries(
+            Object.entries(error).map(([key, value]) => [key, key === "cause" ? serializeError(value, seen) : value])
+        );
+    }
+
+    return { message: String(error) };
+}
+
+function normalizeContext(context?: Record<string, unknown>) {
+    if (!context) {
+        return undefined;
+    }
+
+    return Object.fromEntries(
+        Object.entries(context).map(([key, value]) => [key, key === "error" ? serializeError(value) : value])
+    );
+}
+
 function writeLog(level: LogLevel, message: string, context?: Record<string, unknown>) {
     if (!shouldLog(level)) {
         return;
     }
 
+    const normalizedContext = normalizeContext(context);
     const payload = {
         ts: new Date().toISOString(),
         level,
         message,
-        ...(context ? { context } : {})
+        ...(normalizedContext ? { context: normalizedContext } : {})
     };
 
     const output = JSON.stringify(payload);
