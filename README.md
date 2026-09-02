@@ -74,7 +74,7 @@ LOG_LEVEL=info
 
 The script stores its processing state in the `data/` directory:
 
-- `lastProcessedPostId.txt` stores the timestamp of the newest processed Mastodon post.
+- `lastProcessedPostId.txt` stores the `createdAt` timestamp and Mastodon `id` of the newest processed post. Existing numeric values from older versions are migrated automatically.
 - `threadState.json` maps Mastodon status IDs to their Bluesky thread root and current parent.
 
 Both files are created automatically when they do not exist. A missing `threadState.json` is initialized as an empty state, so new root posts can still be published. Existing Mastodon replies cannot be linked to their previous Bluesky thread until the corresponding state is restored.

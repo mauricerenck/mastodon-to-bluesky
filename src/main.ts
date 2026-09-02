@@ -5,11 +5,14 @@ import { getIntegerEnv } from "./config.js";
 import { logger } from "./logger.js";
 import { buildConsecutiveThreadPlan } from "./threading.js";
 import type { BlueskyThreadReference } from "./bluesky/types.js";
+import type { ProcessedPostMarker } from "./utils.js";
 import {
+    compareProcessedPostMarkers,
+    getProcessedPostMarker,
     loadAttachments,
-    loadLastProcessedPostId,
+    loadLastProcessedMarker,
     loadThreadState,
-    saveLastProcessedPostId,
+    saveLastProcessedMarker,
     saveThreadState
 } from "./utils.js";
 
@@ -22,50 +25,51 @@ logger.info("Configured polling interval", { intervalMinutes });
 
 async function main() {
     try {
-        const lastProcessedPostId = await loadLastProcessedPostId();
-        logger.info("Loaded last processed post marker", { lastProcessedPostId });
+        const lastProcessedMarker = await loadLastProcessedMarker();
+        logger.info("Loaded last processed post marker", { lastProcessedMarker });
 
         const statuses = await mastodon.fetchNewToots();
         logger.info("Fetched Mastodon statuses", { count: statuses.length });
 
         const threadState = await loadThreadState();
-
         const threadPlan = buildConsecutiveThreadPlan(statuses);
         const statusesInOrder = [...statuses].reverse();
 
-        let newestTimestamp = 0;
+        let newestMarker: ProcessedPostMarker = { createdAt: 0, id: null };
         for (const status of statusesInOrder) {
-            const currentTimestampId = new Date(status.created_at).getTime();
-            if (currentTimestampId > newestTimestamp) {
-                newestTimestamp = currentTimestampId;
+            const currentMarker = getProcessedPostMarker(status);
+            if (compareProcessedPostMarkers(currentMarker, newestMarker) > 0) {
+                newestMarker = currentMarker;
             }
         }
 
-        if (lastProcessedPostId === 0) {
-            if (newestTimestamp > 0) {
-                await saveLastProcessedPostId(newestTimestamp);
-                logger.info("Persisted new last processed post marker", { lastProcessedPostId: newestTimestamp });
+        if (lastProcessedMarker.createdAt === 0 && lastProcessedMarker.id === null) {
+            if (newestMarker.createdAt > 0) {
+                await saveLastProcessedMarker(newestMarker);
+                logger.info("Persisted new last processed post marker", { lastProcessedMarker: newestMarker });
             }
             return;
         }
 
-        let lastSuccessfulTimestamp = lastProcessedPostId;
+        let lastSuccessfulMarker = lastProcessedMarker;
         let processingFailed = false;
 
         for (const { status, continuesThread } of threadPlan) {
-            const currentTimestampId = new Date(status.created_at).getTime();
+            const currentMarker = getProcessedPostMarker(status);
             logger.debug("Evaluating status", {
                 statusId: status.id,
                 createdAt: status.created_at,
-                currentTimestampId
+                currentMarker
             });
 
-            if (currentTimestampId <= lastProcessedPostId) {
+            if (compareProcessedPostMarkers(currentMarker, lastProcessedMarker) <= 0) {
                 continue;
             }
 
             if (threadState[status.id]) {
-                lastSuccessfulTimestamp = Math.max(lastSuccessfulTimestamp, currentTimestampId);
+                if (compareProcessedPostMarkers(currentMarker, lastSuccessfulMarker) > 0) {
+                    lastSuccessfulMarker = currentMarker;
+                }
                 continue;
             }
 
@@ -94,12 +98,14 @@ async function main() {
 
                 threadState[status.id] = postResult;
                 await saveThreadState(threadState);
-                lastSuccessfulTimestamp = Math.max(lastSuccessfulTimestamp, currentTimestampId);
+                if (compareProcessedPostMarkers(currentMarker, lastSuccessfulMarker) > 0) {
+                    lastSuccessfulMarker = currentMarker;
+                }
             } catch (error) {
                 logger.error("Posting to Bluesky failed", {
                     statusId: status.id,
                     createdAt: status.created_at,
-                    currentTimestampId,
+                    currentMarker,
                     error
                 });
                 processingFailed = true;
@@ -107,12 +113,13 @@ async function main() {
             }
         }
 
-        const targetTimestamp = processingFailed
-            ? lastSuccessfulTimestamp
-            : Math.max(lastSuccessfulTimestamp, newestTimestamp);
-        if (targetTimestamp > lastProcessedPostId) {
-            await saveLastProcessedPostId(targetTimestamp);
-            logger.info("Persisted new last processed post marker", { lastProcessedPostId: targetTimestamp });
+        const targetMarker =
+            processingFailed || compareProcessedPostMarkers(lastSuccessfulMarker, newestMarker) >= 0
+                ? lastSuccessfulMarker
+                : newestMarker;
+        if (compareProcessedPostMarkers(targetMarker, lastProcessedMarker) > 0) {
+            await saveLastProcessedMarker(targetMarker);
+            logger.info("Persisted new last processed post marker", { lastProcessedMarker: targetMarker });
         }
     } catch (error) {
         logger.error("Main processing cycle failed", { error });
