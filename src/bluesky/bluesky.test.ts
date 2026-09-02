@@ -275,9 +275,14 @@ describe("bluesky", () => {
             // A long message that splitText will split into two parts
             const longText = "A".repeat(150) + " " + "B".repeat(150) + " " + "C".repeat(100);
 
-            await post(longText, []);
+            const result = await post(longText, []);
 
             expect(mockPost).toHaveBeenCalledTimes(2);
+
+            expect(result).toEqual({
+                root: rootResponse,
+                parent: replyResponse
+            });
 
             // Second call should be a reply to the root
             const secondCall = mockPost.mock.calls[1][0];
@@ -345,7 +350,10 @@ describe("bluesky", () => {
             const newReply = { uri: "at://new/reply", cid: "new-reply" };
             mockPost.mockResolvedValueOnce(newReply);
 
-            await post("Reply in existing thread", [], [existingRoot, existingParent]);
+            const result = await post("Reply in existing thread", [], {
+                root: existingRoot,
+                parent: existingParent
+            });
 
             expect(mockPost).toHaveBeenCalledTimes(1);
             expect(mockPost).toHaveBeenCalledWith({
@@ -356,6 +364,7 @@ describe("bluesky", () => {
                     parent: existingParent
                 }
             });
+            expect(result).toEqual({ root: existingRoot, parent: newReply });
         });
     });
 });

@@ -3,13 +3,12 @@ import { getIntegerEnv } from "../config.js";
 import { logger } from "../logger.js";
 import type { Attachment } from "../mastodon/types.js";
 import { sanitizeHtml, splitText, urlToUint8Array } from "../utils.js";
-import type { BlueSkySettings } from "./types.js";
+import type { BlueskyThreadReference, BlueSkySettings } from "./types.js";
 
 let settings: BlueSkySettings = null!;
 let agent: AtpAgent = null!;
 type BlueskyPostResponse = Awaited<ReturnType<AtpAgent["post"]>>;
-type BlueskyReplyRef = { root: BlueskyPostResponse; parent: BlueskyPostResponse };
-type BlueskyMessage = Awaited<ReturnType<typeof createBlueskyMessage>> & { reply?: BlueskyReplyRef };
+type BlueskyMessage = Awaited<ReturnType<typeof createBlueskyMessage>> & { reply?: BlueskyThreadReference };
 
 export const resetCache = () => {
     settings = null!;
@@ -56,18 +55,18 @@ function loadSettings() {
 export const post = async (
     message: string,
     attachments: readonly Attachment[],
-    blueskyThread: readonly BlueskyPostResponse[] = []
-): Promise<BlueskyPostResponse> => {
+    blueskyThread?: BlueskyThreadReference
+): Promise<BlueskyThreadReference> => {
     const messageParts = splitText(sanitizeHtml(message), settings.maxPostLength);
     const uploadedImages = await uploadImages(attachments);
 
     let rootMessage: BlueskyMessage = await createBlueskyMessage(messageParts[0]);
-    if (blueskyThread.length > 0) {
+    if (blueskyThread) {
         rootMessage = {
             ...rootMessage,
             reply: {
-                root: blueskyThread[0],
-                parent: blueskyThread[blueskyThread.length - 1]
+                root: blueskyThread.root,
+                parent: blueskyThread.parent
             }
         };
     }
@@ -89,23 +88,22 @@ export const post = async (
         ...embedPart
     });
 
-    if (messageParts.length === 1) {
-        return rootMessageResponse;
-    }
-
-    let replyMessageResponse: BlueskyPostResponse | null = null;
+    let parentMessageResponse = rootMessageResponse;
     for (let index = 1; index < messageParts.length; index++) {
         const replyMessage = await createBlueskyMessage(messageParts[index]);
-        replyMessageResponse = await agent.post({
+        parentMessageResponse = await agent.post({
             ...replyMessage,
             reply: {
-                root: blueskyThread.length > 0 ? blueskyThread[0] : rootMessageResponse,
-                parent: replyMessageResponse ?? rootMessageResponse
+                root: blueskyThread?.root ?? rootMessageResponse,
+                parent: parentMessageResponse
             }
         });
     }
 
-    return replyMessageResponse ?? rootMessageResponse;
+    return {
+        root: blueskyThread?.root ?? rootMessageResponse,
+        parent: parentMessageResponse
+    };
 };
 
 async function loginInternal(url: string, handle: string, password: string): Promise<AtpAgent> {

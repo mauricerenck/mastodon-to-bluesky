@@ -17,6 +17,8 @@ vi.mock("fs/promises", () => ({
 import {
     loadLastProcessedPostId,
     saveLastProcessedPostId,
+    loadThreadState,
+    saveThreadState,
     splitText,
     sanitizeHtml,
     loadAttachments,
@@ -61,7 +63,11 @@ describe("utils", () => {
 
             expect(result).toBe(0);
             expect(mockMkdir).toHaveBeenCalledWith(expect.stringContaining("data"), { recursive: true });
-            expect(mockWriteFile).toHaveBeenCalledWith(expect.stringContaining("lastProcessedPostId.txt"), "0", "utf-8");
+            expect(mockWriteFile).toHaveBeenCalledWith(
+                expect.stringContaining("lastProcessedPostId.txt"),
+                "0",
+                "utf-8"
+            );
         });
 
         it("should throw when state file contains invalid number", async () => {
@@ -93,6 +99,49 @@ describe("utils", () => {
             mockWriteFile.mockRejectedValue(new Error("EACCES"));
 
             await expect(saveLastProcessedPostId(42)).rejects.toThrow("EACCES");
+        });
+    });
+
+    describe("thread state", () => {
+        const threadState = {
+            "mastodon-1": {
+                root: { uri: "at://root", cid: "cid-root" },
+                parent: { uri: "at://parent", cid: "cid-parent" }
+            }
+        };
+
+        it("should load persisted thread state", async () => {
+            mockReadFile.mockResolvedValue(JSON.stringify(threadState));
+
+            await expect(loadThreadState()).resolves.toEqual(threadState);
+        });
+
+        it("should initialize thread state when the file does not exist", async () => {
+            mockReadFile.mockRejectedValue({ code: "ENOENT" });
+            mockMkdir.mockResolvedValue(undefined);
+            mockWriteFile.mockResolvedValue(undefined);
+
+            await expect(loadThreadState()).resolves.toEqual({});
+            expect(mockWriteFile).toHaveBeenCalledWith(expect.stringContaining("threadState.json"), "{}", "utf-8");
+        });
+
+        it("should reject invalid persisted thread state", async () => {
+            mockReadFile.mockResolvedValue(JSON.stringify({ "mastodon-1": { root: {}, parent: {} } }));
+
+            await expect(loadThreadState()).rejects.toThrow("Invalid value");
+        });
+
+        it("should save thread state", async () => {
+            mockMkdir.mockResolvedValue(undefined);
+            mockWriteFile.mockResolvedValue(undefined);
+
+            await saveThreadState(threadState);
+
+            expect(mockWriteFile).toHaveBeenCalledWith(
+                expect.stringContaining("threadState.json"),
+                JSON.stringify(threadState, null, 2),
+                "utf-8"
+            );
         });
     });
 

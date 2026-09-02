@@ -70,6 +70,17 @@ LOG_LEVEL=info
 
 `INTERVAL_MINUTES` controls the polling interval in minutes.
 
+## Persisted state
+
+The script stores its processing state in the `data/` directory:
+
+- `lastProcessedPostId.txt` stores the timestamp of the newest processed Mastodon post.
+- `threadState.json` maps Mastodon status IDs to their Bluesky thread root and current parent.
+
+Both files are created automatically when they do not exist. A missing `threadState.json` is initialized as an empty state, so new root posts can still be published. Existing Mastodon replies cannot be linked to their previous Bluesky thread until the corresponding state is restored.
+
+Keep the `data/` directory persistent across restarts. The provided Docker Compose configuration mounts it to a named volume for this purpose.
+
 ---
 
 For more details see: <https://maurice-renck.de/hub/tooling/crosspost-from-mastodon-to-bluesky>

@@ -2,11 +2,15 @@ import fs from "fs/promises";
 import path from "path";
 import sanitize from "sanitize-html";
 import type { Status, Attachment } from "./mastodon/types.js";
+import type { BlueskyThreadReference } from "./bluesky/types.js";
 import { logger } from "./logger.js";
 
 // File to store the last processed Mastodon post ID
 const lastProcessedPostIdFile = path.join(path.resolve(), "data", "lastProcessedPostId.txt");
+const threadStateFile = path.join(path.resolve(), "data", "threadState.json");
 const dataDirectory = path.dirname(lastProcessedPostIdFile);
+
+export type BlueskyThreadState = Record<string, BlueskyThreadReference>;
 
 /**
  * Load the last processed post ID from the file
@@ -47,6 +51,63 @@ export const saveLastProcessedPostId = async (lastProcessedPostId: number) => {
         throw error;
     }
 };
+
+export const loadThreadState = async (): Promise<BlueskyThreadState> => {
+    try {
+        const value = await fs.readFile(threadStateFile, "utf-8");
+        const parsedValue = JSON.parse(value) as unknown;
+
+        if (!isBlueskyThreadState(parsedValue)) {
+            throw new Error(`Invalid value in ${threadStateFile}`);
+        }
+
+        return parsedValue;
+    } catch (error) {
+        const nodeError = error as NodeJS.ErrnoException;
+        if (nodeError.code !== "ENOENT") {
+            throw error;
+        }
+
+        await fs.mkdir(dataDirectory, { recursive: true });
+        await fs.writeFile(threadStateFile, "{}", "utf-8");
+        logger.info("Initialized missing thread state file", { file: threadStateFile });
+        return {};
+    }
+};
+
+export const saveThreadState = async (threadState: BlueskyThreadState) => {
+    try {
+        await fs.mkdir(dataDirectory, { recursive: true });
+        await fs.writeFile(threadStateFile, JSON.stringify(threadState, null, 2), "utf-8");
+    } catch (error) {
+        logger.error("Failed to persist thread state", { entries: Object.keys(threadState).length, error });
+        throw error;
+    }
+};
+
+function isBlueskyPostReference(value: unknown): value is { uri: string; cid: string } {
+    if (typeof value !== "object" || value === null) {
+        return false;
+    }
+
+    const reference = value as { uri?: unknown; cid?: unknown };
+    return typeof reference.uri === "string" && typeof reference.cid === "string";
+}
+
+function isBlueskyThreadState(value: unknown): value is BlueskyThreadState {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+        return false;
+    }
+
+    return Object.values(value).every((entry) => {
+        if (typeof entry !== "object" || entry === null) {
+            return false;
+        }
+
+        const thread = entry as { root?: unknown; parent?: unknown };
+        return isBlueskyPostReference(thread.root) && isBlueskyPostReference(thread.parent);
+    });
+}
 
 export const splitText = (text: string, maxLength: number) => {
     // Split the text by spaces
