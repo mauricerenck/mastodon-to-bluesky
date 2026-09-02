@@ -1,6 +1,6 @@
 {
   "name": "mastodon-to-bluesky",
-  "version": "1.5.5",
+  "version": "1.6.0",
   "description": "",
   "main": "main.js",
   "type": "module",
@@ -16,17 +16,17 @@
   "dependencies": {
     "@atproto/api": "^0.20.42",
     "dotenv": "^17.4.2",
-    "sanitize-html": "^2.17.6"
+    "sanitize-html": "^2.17.7"
   },
   "devDependencies": {
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^11.0.1",
     "@types/node": "^22.20.1",
     "@types/sanitize-html": "^2.16.1",
-    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/coverage-v8": "^4.1.11",
     "istanbul-badges-readme": "^1.9.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   }
 }
