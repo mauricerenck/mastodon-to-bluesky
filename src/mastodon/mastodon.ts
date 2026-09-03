@@ -41,13 +41,8 @@ export const fetchNewToots = async () => {
         const allStatuses = (await getStatuses(settings.url, account.id))
             .filter(
                 // filter replies and re-blogs
-                (status) => {
-                    return (
-                        status.in_reply_to_id === null &&
-                        status.in_reply_to_account_id === null &&
-                        status.reblog === null
-                    );
-                }
+                (status) =>
+                    status.in_reply_to_id === null && status.in_reply_to_account_id === null && status.reblog === null
             )
             .filter(
                 // filter tags set to be ignored
