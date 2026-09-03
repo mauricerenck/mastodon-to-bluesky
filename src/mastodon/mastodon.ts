@@ -35,7 +35,7 @@ export const fetchNewToots = async () => {
         account = await getAccountByUsername(settings.url, settings.username);
     }
 
-    const ignoredTags = process.env.IGNORE_TAGS ? process.env.IGNORE_TAGS.split(",") : [];
+    const ignoredTags = process.env.IGNORE_TAGS ? process.env.IGNORE_TAGS.split(",") : null;
 
     try {
         const allStatuses = (await getStatuses(settings.url, account.id))
