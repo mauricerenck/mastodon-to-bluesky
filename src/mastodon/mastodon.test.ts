@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fetchNewToots, resetCache } from "./mastodon.js";
 import type { Account, Status } from "./types.js";
 
@@ -192,6 +192,36 @@ describe("mastodon", () => {
             const statuses: Status[] = [
                 makeStatus({ id: "1", content: "<p>Normal post</p>" }),
                 makeStatus({ id: "2", content: "<p>Partial reply</p>", in_reply_to_account_id: "88" })
+            ];
+
+            const responses = new Map([
+                [
+                    `${INSTANCE_URL}/api/v1/accounts/lookup?acct=${USERNAME}`,
+                    { ok: true, json: async () => makeAccount() }
+                ],
+                [`${INSTANCE_URL}/api/v1/accounts/${ACCOUNT_ID}/statuses`, { ok: true, json: async () => statuses }]
+            ]);
+            vi.stubGlobal("fetch", mockFetch(responses));
+
+            const result = await fetchNewToots();
+            expect(result).toHaveLength(1);
+            expect(result[0].id).toBe("1");
+        });
+
+        it("should filter out tags", async () => {
+            vi.stubEnv("IGNORE_TAGS", "example,unused");
+            const statuses: Status[] = [
+                makeStatus({ id: "1", content: "<p>Post without tags</p>" }),
+                makeStatus({
+                    id: "2",
+                    content: "<p>Post with tags</p>",
+                    tags: [{ name: "example", url: "https://example.com/example" }]
+                }),
+                makeStatus({
+                    id: "3",
+                    content: "<p>Post with tags</p>",
+                    tags: [{ name: "EXAMPLE", url: "https://example.com/EXAMPLE" }]
+                })
             ];
 
             const responses = new Map([

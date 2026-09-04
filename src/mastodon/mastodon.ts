@@ -35,7 +35,11 @@ export const fetchNewToots = async () => {
         account = await getAccountByUsername(settings.url, settings.username);
     }
 
-    const ignoredTags = process.env.IGNORE_TAGS ? process.env.IGNORE_TAGS.split(",") : null;
+    const ignoredTags = process.env.IGNORE_TAGS
+        ? process.env.IGNORE_TAGS.toLowerCase()
+              .split(",")
+              .map((tag) => tag.trim())
+        : null;
 
     try {
         const allStatuses = (await getStatuses(settings.url, account.id))
@@ -47,12 +51,12 @@ export const fetchNewToots = async () => {
             .filter(
                 // filter tags set to be ignored
                 (status) => {
-                    if (!ignoredTags) {
+                    if (!ignoredTags || ignoredTags.length === 0) {
                         return true;
                     }
 
                     const statusTags = new Set(status.tags.map((tag) => tag.name.toLowerCase().trim()));
-                    return !ignoredTags.some((tag) => statusTags.has(tag.toLowerCase().trim()));
+                    return !ignoredTags.some((tag) => statusTags.has(tag));
                 }
             );
 
