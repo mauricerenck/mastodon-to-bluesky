@@ -35,12 +35,30 @@ export const fetchNewToots = async () => {
         account = await getAccountByUsername(settings.url, settings.username);
     }
 
+    const ignoredTags = process.env.IGNORE_TAGS
+        ? process.env.IGNORE_TAGS.toLowerCase()
+              .split(",")
+              .map((tag) => tag.trim())
+        : null;
+
     try {
-        const allStatuses = (await getStatuses(settings.url, account.id)).filter(
-            // filter replies and re-blogs
-            (status) =>
-                status.in_reply_to_id === null && status.in_reply_to_account_id === null && status.reblog === null
-        );
+        const allStatuses = (await getStatuses(settings.url, account.id))
+            .filter(
+                // filter replies and re-blogs
+                (status) =>
+                    status.in_reply_to_id === null && status.in_reply_to_account_id === null && status.reblog === null
+            )
+            .filter(
+                // filter tags set to be ignored
+                (status) => {
+                    if (!ignoredTags || ignoredTags.length === 0) {
+                        return true;
+                    }
+
+                    const statusTags = new Set(status.tags.map((tag) => tag.name.toLowerCase().trim()));
+                    return !ignoredTags.some((tag) => statusTags.has(tag));
+                }
+            );
 
         //return lastProcessedPostId === 0 ? allStatuses : findAfterDate(allStatuses, new Date(lastProcessedPostId));
         return allStatuses;
