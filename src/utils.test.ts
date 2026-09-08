@@ -4,17 +4,23 @@ import type { Status, MediaAttachment } from "./mastodon/types.js";
 // --- Mock fs/promises ---
 const mockReadFile = vi.fn();
 const mockWriteFile = vi.fn();
+const mockMkdir = vi.fn();
 
 vi.mock("fs/promises", () => ({
     default: {
         readFile: (...args: unknown[]) => mockReadFile(...args),
-        writeFile: (...args: unknown[]) => mockWriteFile(...args)
+        writeFile: (...args: unknown[]) => mockWriteFile(...args),
+        mkdir: (...args: unknown[]) => mockMkdir(...args)
     }
 }));
 
 import {
-    loadLastProcessedPostId,
-    saveLastProcessedPostId,
+    compareProcessedPostMarkers,
+    getProcessedPostMarker,
+    loadLastProcessedMarker,
+    saveLastProcessedMarker,
+    loadThreadState,
+    saveThreadState,
     splitText,
     sanitizeHtml,
     loadAttachments,
@@ -30,53 +36,153 @@ describe("utils", () => {
         vi.restoreAllMocks();
     });
 
-    // ── loadLastProcessedPostId ──────────────────────────────────────
+    // ── loadLastProcessedMarker ──────────────────────────────────────
 
-    describe("loadLastProcessedPostId", () => {
-        it("should return the parsed post ID from file", async () => {
-            mockReadFile.mockResolvedValue("123456\n");
+    describe("loadLastProcessedMarker", () => {
+        it("should return the marker from file", async () => {
+            mockReadFile.mockResolvedValue(JSON.stringify({ createdAt: 123456, id: "post-1" }));
 
-            const result = await loadLastProcessedPostId();
+            const result = await loadLastProcessedMarker();
 
-            expect(result).toBe(123456);
+            expect(result).toEqual({ createdAt: 123456, id: "post-1" });
             expect(mockReadFile).toHaveBeenCalledWith(expect.stringContaining("lastProcessedPostId.txt"), "utf-8");
         });
 
-        it("should trim whitespace before parsing", async () => {
-            mockReadFile.mockResolvedValue("  789  \n");
-
-            const result = await loadLastProcessedPostId();
-
-            expect(result).toBe(789);
-        });
-
-        it("should propagate error when file does not exist", async () => {
-            mockReadFile.mockRejectedValue(new Error("ENOENT"));
-
-            await expect(loadLastProcessedPostId()).rejects.toThrow("ENOENT");
-        });
-    });
-
-    // ── saveLastProcessedPostId ──────────────────────────────────────
-
-    describe("saveLastProcessedPostId", () => {
-        it("should write the post ID to file", async () => {
+        it("should migrate a legacy timestamp without reposting equal-timestamp statuses", async () => {
+            mockReadFile.mockResolvedValue("123456\n");
+            mockMkdir.mockResolvedValue(undefined);
             mockWriteFile.mockResolvedValue(undefined);
 
-            await saveLastProcessedPostId(42);
+            const result = await loadLastProcessedMarker();
 
+            expect(result).toEqual({ createdAt: 123456, id: null });
             expect(mockWriteFile).toHaveBeenCalledWith(
                 expect.stringContaining("lastProcessedPostId.txt"),
-                "42",
+                JSON.stringify({ createdAt: 123456, id: null }),
                 "utf-8"
             );
         });
 
-        it("should not throw when write fails (logs error instead)", async () => {
+        it("should trim whitespace before parsing", async () => {
+            mockReadFile.mockResolvedValue(`  ${JSON.stringify({ createdAt: 789, id: "post-1" })}  \n`);
+
+            const result = await loadLastProcessedMarker();
+
+            expect(result).toEqual({ createdAt: 789, id: "post-1" });
+        });
+
+        it("should initialize state with 0 when file does not exist", async () => {
+            mockReadFile.mockRejectedValue({ code: "ENOENT" });
+            mockMkdir.mockResolvedValue(undefined);
+            mockWriteFile.mockResolvedValue(undefined);
+
+            const result = await loadLastProcessedMarker();
+
+            expect(result).toEqual({ createdAt: 0, id: null });
+            expect(mockMkdir).toHaveBeenCalledWith(expect.stringContaining("data"), { recursive: true });
+            expect(mockWriteFile).toHaveBeenCalledWith(
+                expect.stringContaining("lastProcessedPostId.txt"),
+                JSON.stringify({ createdAt: 0, id: null }),
+                "utf-8"
+            );
+        });
+
+        it("should throw when state file contains an invalid marker", async () => {
+            mockReadFile.mockResolvedValue("not-a-number");
+
+            await expect(loadLastProcessedMarker()).rejects.toThrow("Invalid value");
+        });
+    });
+
+    // ── saveLastProcessedMarker ──────────────────────────────────────
+
+    describe("saveLastProcessedMarker", () => {
+        it("should write the marker to file", async () => {
+            mockMkdir.mockResolvedValue(undefined);
+            mockWriteFile.mockResolvedValue(undefined);
+
+            const marker = { createdAt: 42, id: "post-42" };
+            await saveLastProcessedMarker(marker);
+
+            expect(mockMkdir).toHaveBeenCalledWith(expect.stringContaining("data"), { recursive: true });
+            expect(mockWriteFile).toHaveBeenCalledWith(
+                expect.stringContaining("lastProcessedPostId.txt"),
+                JSON.stringify(marker),
+                "utf-8"
+            );
+        });
+
+        it("should throw when write fails", async () => {
+            mockMkdir.mockResolvedValue(undefined);
             mockWriteFile.mockRejectedValue(new Error("EACCES"));
 
-            // saveLastProcessedPostId catches the error internally
-            await expect(saveLastProcessedPostId(42)).resolves.toBeUndefined();
+            await expect(saveLastProcessedMarker({ createdAt: 42, id: "post-42" })).rejects.toThrow("EACCES");
+        });
+    });
+
+    describe("processed post markers", () => {
+        it("should create a marker from a status", () => {
+            expect(getProcessedPostMarker({ id: "post-1", created_at: "2026-04-01T12:00:00.000Z" })).toEqual({
+                createdAt: 1775044800000,
+                id: "post-1"
+            });
+        });
+
+        it("should order statuses with identical timestamps by ID", () => {
+            const earlier = { createdAt: 1000, id: "999999999999999999" };
+            const later = { createdAt: 1000, id: "1000000000000000000" };
+
+            expect(compareProcessedPostMarkers(later, earlier)).toBeGreaterThan(0);
+        });
+
+        it("should keep legacy markers ahead of statuses at the same timestamp", () => {
+            const legacyMarker = { createdAt: 1000, id: null };
+            const statusMarker = { createdAt: 1000, id: "1" };
+
+            expect(compareProcessedPostMarkers(statusMarker, legacyMarker)).toBeLessThan(0);
+        });
+    });
+
+    describe("thread state", () => {
+        const threadState = {
+            "mastodon-1": {
+                root: { uri: "at://root", cid: "cid-root" },
+                parent: { uri: "at://parent", cid: "cid-parent" }
+            }
+        };
+
+        it("should load persisted thread state", async () => {
+            mockReadFile.mockResolvedValue(JSON.stringify(threadState));
+
+            await expect(loadThreadState()).resolves.toEqual(threadState);
+        });
+
+        it("should initialize thread state when the file does not exist", async () => {
+            mockReadFile.mockRejectedValue({ code: "ENOENT" });
+            mockMkdir.mockResolvedValue(undefined);
+            mockWriteFile.mockResolvedValue(undefined);
+
+            await expect(loadThreadState()).resolves.toEqual({});
+            expect(mockWriteFile).toHaveBeenCalledWith(expect.stringContaining("threadState.json"), "{}", "utf-8");
+        });
+
+        it("should reject invalid persisted thread state", async () => {
+            mockReadFile.mockResolvedValue(JSON.stringify({ "mastodon-1": { root: {}, parent: {} } }));
+
+            await expect(loadThreadState()).rejects.toThrow("Invalid value");
+        });
+
+        it("should save thread state", async () => {
+            mockMkdir.mockResolvedValue(undefined);
+            mockWriteFile.mockResolvedValue(undefined);
+
+            await saveThreadState(threadState);
+
+            expect(mockWriteFile).toHaveBeenCalledWith(
+                expect.stringContaining("threadState.json"),
+                JSON.stringify(threadState, null, 2),
+                "utf-8"
+            );
         });
     });
 

@@ -4,3 +4,13 @@ export type BlueSkySettings = {
     password: string;
     maxPostLength: number;
 };
+
+export type BlueskyPostReference = {
+    uri: string;
+    cid: string;
+};
+
+export type BlueskyThreadReference = {
+    root: BlueskyPostReference;
+    parent: BlueskyPostReference;
+};

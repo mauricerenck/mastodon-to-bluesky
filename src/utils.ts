@@ -2,29 +2,194 @@ import fs from "fs/promises";
 import path from "path";
 import sanitize from "sanitize-html";
 import type { Status, Attachment } from "./mastodon/types.js";
+import type { BlueskyThreadReference } from "./bluesky/types.js";
+import { logger } from "./logger.js";
 
-// File to store the last processed Mastodon post ID
+// File to store the last processed Mastodon post marker
 const lastProcessedPostIdFile = path.join(path.resolve(), "data", "lastProcessedPostId.txt");
+const threadStateFile = path.join(path.resolve(), "data", "threadState.json");
+const dataDirectory = path.dirname(lastProcessedPostIdFile);
+
+export type ProcessedPostMarker = {
+    createdAt: number;
+    id: string | null;
+};
+
+export type BlueskyThreadState = Record<string, BlueskyThreadReference>;
 
 /**
- * Load the last processed post ID from the file
+ * Load the last processed Mastodon post marker.
  * @returns
  */
-export const loadLastProcessedPostId = async (): Promise<number> => {
-    const value = await fs.readFile(lastProcessedPostIdFile, "utf-8");
-    return parseInt(value.trim(), 10);
+export const loadLastProcessedMarker = async (): Promise<ProcessedPostMarker> => {
+    try {
+        const value = await fs.readFile(lastProcessedPostIdFile, "utf-8");
+        const trimmedValue = value.trim();
+
+        if (/^\d+$/.test(trimmedValue)) {
+            const legacyCreatedAt = Number(trimmedValue);
+            if (!Number.isSafeInteger(legacyCreatedAt)) {
+                throw new Error(`Invalid value in ${lastProcessedPostIdFile}: "${trimmedValue}"`);
+            }
+
+            const migratedMarker: ProcessedPostMarker = {
+                createdAt: legacyCreatedAt,
+                id: null
+            };
+            await writeProcessedPostMarker(migratedMarker);
+            logger.info("Migrated legacy processed post marker", {
+                file: lastProcessedPostIdFile,
+                createdAt: legacyCreatedAt
+            });
+            return migratedMarker;
+        }
+
+        let parsedValue: unknown;
+        try {
+            parsedValue = JSON.parse(trimmedValue) as unknown;
+        } catch {
+            throw new Error(`Invalid value in ${lastProcessedPostIdFile}: "${trimmedValue}"`);
+        }
+
+        if (!isProcessedPostMarker(parsedValue)) {
+            throw new Error(`Invalid value in ${lastProcessedPostIdFile}: "${trimmedValue}"`);
+        }
+
+        return parsedValue;
+    } catch (error) {
+        const nodeError = error as NodeJS.ErrnoException;
+        if (nodeError.code !== "ENOENT") {
+            throw error;
+        }
+
+        await writeProcessedPostMarker({ createdAt: 0, id: null });
+        logger.info("Initialized missing state file", { file: lastProcessedPostIdFile });
+        return { createdAt: 0, id: null };
+    }
 };
 
 /**
- * Save the last processed post ID to the file
+ * Save the last processed Mastodon post marker.
  */
-export const saveLastProcessedPostId = async (lastProcessedPostId: number) => {
+export const saveLastProcessedMarker = async (marker: ProcessedPostMarker) => {
     try {
-        await fs.writeFile(lastProcessedPostIdFile, `${lastProcessedPostId}`, "utf-8");
+        await writeProcessedPostMarker(marker);
     } catch (error) {
-        console.error("Error saving last processed post ID:", error);
+        logger.error("Failed to persist processed post marker", { marker, error });
+        throw error;
     }
 };
+
+export const getProcessedPostMarker = (status: Pick<Status, "created_at" | "id">): ProcessedPostMarker => ({
+    createdAt: new Date(status.created_at).getTime(),
+    id: status.id
+});
+
+export const compareProcessedPostMarkers = (left: ProcessedPostMarker, right: ProcessedPostMarker): number => {
+    if (left.createdAt !== right.createdAt) {
+        return left.createdAt < right.createdAt ? -1 : 1;
+    }
+
+    if (left.id === right.id) {
+        return 0;
+    }
+
+    // A legacy marker has no ID and is treated as the end of its timestamp.
+    if (left.id === null) {
+        return 1;
+    }
+    if (right.id === null) {
+        return -1;
+    }
+
+    return comparePostIds(left.id, right.id);
+};
+
+async function writeProcessedPostMarker(marker: ProcessedPostMarker) {
+    await fs.mkdir(dataDirectory, { recursive: true });
+    await fs.writeFile(lastProcessedPostIdFile, JSON.stringify(marker), "utf-8");
+}
+
+function isProcessedPostMarker(value: unknown): value is ProcessedPostMarker {
+    if (typeof value !== "object" || value === null) {
+        return false;
+    }
+
+    const marker = value as { createdAt?: unknown; id?: unknown };
+    return (
+        typeof marker.createdAt === "number" &&
+        Number.isSafeInteger(marker.createdAt) &&
+        marker.createdAt >= 0 &&
+        (typeof marker.id === "string" || marker.id === null)
+    );
+}
+
+function comparePostIds(left: string, right: string): number {
+    if (/^\d+$/.test(left) && /^\d+$/.test(right)) {
+        const leftNumber = BigInt(left);
+        const rightNumber = BigInt(right);
+        return leftNumber === rightNumber ? 0 : leftNumber < rightNumber ? -1 : 1;
+    }
+
+    return left < right ? -1 : 1;
+}
+
+export const loadThreadState = async (): Promise<BlueskyThreadState> => {
+    try {
+        const value = await fs.readFile(threadStateFile, "utf-8");
+        const parsedValue = JSON.parse(value) as unknown;
+
+        if (!isBlueskyThreadState(parsedValue)) {
+            throw new Error(`Invalid value in ${threadStateFile}`);
+        }
+
+        return parsedValue;
+    } catch (error) {
+        const nodeError = error as NodeJS.ErrnoException;
+        if (nodeError.code !== "ENOENT") {
+            throw error;
+        }
+
+        await fs.mkdir(dataDirectory, { recursive: true });
+        await fs.writeFile(threadStateFile, "{}", "utf-8");
+        logger.info("Initialized missing thread state file", { file: threadStateFile });
+        return {};
+    }
+};
+
+export const saveThreadState = async (threadState: BlueskyThreadState) => {
+    try {
+        await fs.mkdir(dataDirectory, { recursive: true });
+        await fs.writeFile(threadStateFile, JSON.stringify(threadState, null, 2), "utf-8");
+    } catch (error) {
+        logger.error("Failed to persist thread state", { entries: Object.keys(threadState).length, error });
+        throw error;
+    }
+};
+
+function isBlueskyPostReference(value: unknown): value is { uri: string; cid: string } {
+    if (typeof value !== "object" || value === null) {
+        return false;
+    }
+
+    const reference = value as { uri?: unknown; cid?: unknown };
+    return typeof reference.uri === "string" && typeof reference.cid === "string";
+}
+
+function isBlueskyThreadState(value: unknown): value is BlueskyThreadState {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+        return false;
+    }
+
+    return Object.values(value).every((entry) => {
+        if (typeof entry !== "object" || entry === null) {
+            return false;
+        }
+
+        const thread = entry as { root?: unknown; parent?: unknown };
+        return isBlueskyPostReference(thread.root) && isBlueskyPostReference(thread.parent);
+    });
+}
 
 export const splitText = (text: string, maxLength: number) => {
     // Split the text by spaces
@@ -95,11 +260,11 @@ async function getMimeType(url: string) {
         if (response.ok) {
             return response.headers.get("Content-Type");
         } else {
-            console.warn("Server antwortete mit Status:", response.status);
+            logger.warn("Failed to fetch mime-type: unexpected status", { url, status: response.status });
             return null;
         }
     } catch (error) {
-        console.error("Fehler beim Abrufen des MIME-Types:", error);
+        logger.error("Failed to fetch mime-type", { url, error });
         return null;
     }
 }

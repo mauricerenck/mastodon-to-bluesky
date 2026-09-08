@@ -48,7 +48,16 @@ function makeStatus(overrides: Partial<Status> = {}): Status {
 }
 
 function mockFetch(
-    responses: Map<string, { ok: boolean; json: () => Promise<unknown>; status?: number; statusText?: string }>
+    responses: Map<
+        string,
+        {
+            ok: boolean;
+            json: () => Promise<unknown>;
+            status?: number;
+            statusText?: string;
+            headers?: Headers;
+        }
+    >
 ) {
     return vi.fn((input: string | URL | Request) => {
         const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
@@ -58,7 +67,8 @@ function mockFetch(
                 ok: match.ok,
                 status: match.status ?? (match.ok ? 200 : 500),
                 statusText: match.statusText ?? (match.ok ? "OK" : "Internal Server Error"),
-                json: match.json
+                json: match.json,
+                headers: match.headers ?? new Headers()
             } as Response);
         }
         return Promise.reject(new Error(`Unexpected fetch call: ${url}`));
@@ -148,7 +158,63 @@ describe("mastodon", () => {
             expect(result[1].id).toBe("2");
         });
 
-        it("should filter out replies", async () => {
+        it("should load additional pages via next link", async () => {
+            const pageOne: Status[] = [makeStatus({ id: "1", content: "<p>Post 1</p>" })];
+            const pageTwo: Status[] = [makeStatus({ id: "2", content: "<p>Post 2</p>" })];
+            const nextLink = `${INSTANCE_URL}/api/v1/accounts/${ACCOUNT_ID}/statuses?max_id=1`;
+
+            const responses = new Map([
+                [
+                    `${INSTANCE_URL}/api/v1/accounts/lookup?acct=${USERNAME}`,
+                    { ok: true, json: async () => makeAccount() }
+                ],
+                [
+                    `${INSTANCE_URL}/api/v1/accounts/${ACCOUNT_ID}/statuses`,
+                    {
+                        ok: true,
+                        json: async () => pageOne,
+                        headers: new Headers({ Link: `<${nextLink}>; rel="next"` })
+                    }
+                ],
+                [nextLink, { ok: true, json: async () => pageTwo }]
+            ]);
+            const fetchMock = mockFetch(responses);
+            vi.stubGlobal("fetch", fetchMock);
+
+            const result = await fetchNewToots();
+
+            expect(result).toHaveLength(2);
+            expect(result.map((status) => status.id)).toEqual(["1", "2"]);
+            expect(fetchMock).toHaveBeenCalledWith(nextLink);
+        });
+
+        it("should keep replies to own account", async () => {
+            const statuses: Status[] = [
+                makeStatus({ id: "1", content: "<p>Normal post</p>" }),
+                makeStatus({
+                    id: "2",
+                    content: "<p>Self reply</p>",
+                    in_reply_to_id: "1",
+                    in_reply_to_account_id: ACCOUNT_ID
+                })
+            ];
+
+            const responses = new Map([
+                [
+                    `${INSTANCE_URL}/api/v1/accounts/lookup?acct=${USERNAME}`,
+                    { ok: true, json: async () => makeAccount() }
+                ],
+                [`${INSTANCE_URL}/api/v1/accounts/${ACCOUNT_ID}/statuses`, { ok: true, json: async () => statuses }]
+            ]);
+            vi.stubGlobal("fetch", mockFetch(responses));
+
+            const result = await fetchNewToots();
+            expect(result).toHaveLength(2);
+            expect(result[0].id).toBe("1");
+            expect(result[1].id).toBe("2");
+        });
+
+        it("should filter out replies to other accounts", async () => {
             const statuses: Status[] = [
                 makeStatus({ id: "1", content: "<p>Normal post</p>" }),
                 makeStatus({ id: "2", content: "<p>Reply</p>", in_reply_to_id: "99", in_reply_to_account_id: "88" })

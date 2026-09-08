@@ -5,8 +5,10 @@ import type { Status } from "./mastodon/types.js";
 const mockLogin = vi.fn();
 const mockPost = vi.fn();
 const mockFetchNewToots = vi.fn();
-const mockLoadLastProcessedPostId = vi.fn();
-const mockSaveLastProcessedPostId = vi.fn();
+const mockLoadLastProcessedMarker = vi.fn();
+const mockSaveLastProcessedMarker = vi.fn();
+const mockLoadThreadState = vi.fn();
+const mockSaveThreadState = vi.fn();
 const mockLoadAttachments = vi.fn();
 
 vi.mock("dotenv/config", () => ({}));
@@ -21,17 +23,45 @@ vi.mock("./mastodon/index.js", () => ({
 }));
 
 vi.mock("./utils.js", () => ({
-    loadLastProcessedPostId: (...args: unknown[]) => mockLoadLastProcessedPostId(...args),
-    saveLastProcessedPostId: (...args: unknown[]) => mockSaveLastProcessedPostId(...args),
+    compareProcessedPostMarkers: (
+        left: { createdAt: number; id: string | null },
+        right: { createdAt: number; id: string | null }
+    ) => {
+        if (left.createdAt !== right.createdAt) {
+            return left.createdAt < right.createdAt ? -1 : 1;
+        }
+        if (left.id === right.id) {
+            return 0;
+        }
+        if (left.id === null) {
+            return 1;
+        }
+        if (right.id === null) {
+            return -1;
+        }
+        return left.id < right.id ? -1 : 1;
+    },
+    getProcessedPostMarker: (status: { created_at: string; id: string }) => ({
+        createdAt: new Date(status.created_at).getTime(),
+        id: status.id
+    }),
+    loadLastProcessedMarker: (...args: unknown[]) => mockLoadLastProcessedMarker(...args),
+    saveLastProcessedMarker: (...args: unknown[]) => mockSaveLastProcessedMarker(...args),
+    loadThreadState: (...args: unknown[]) => mockLoadThreadState(...args),
+    saveThreadState: (...args: unknown[]) => mockSaveThreadState(...args),
     loadAttachments: (...args: unknown[]) => mockLoadAttachments(...args)
 }));
 
 const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
 
+const makeProcessedMarker = (createdAt: number, id: string | null = null) => ({ createdAt, id });
+
 function makeStatus(overrides: Partial<Status> = {}): Status {
     return {
         id: "1",
         created_at: "2026-04-01T12:00:00.000Z",
+        in_reply_to_id: null,
+        in_reply_to_account_id: null,
         sensitive: false,
         spoiler_text: "",
         visibility: "public",
@@ -41,6 +71,7 @@ function makeStatus(overrides: Partial<Status> = {}): Status {
         reblogs_count: 0,
         favourites_count: 0,
         content: "Hello World",
+        reblog: null,
         account: {
             id: "1",
             username: "user",
@@ -80,10 +111,15 @@ describe("main", () => {
 
         mockLogin.mockResolvedValue(undefined);
         mockFetchNewToots.mockResolvedValue([]);
-        mockLoadLastProcessedPostId.mockResolvedValue(0);
-        mockSaveLastProcessedPostId.mockResolvedValue(undefined);
+        mockLoadLastProcessedMarker.mockResolvedValue(makeProcessedMarker(0));
+        mockSaveLastProcessedMarker.mockResolvedValue(undefined);
+        mockLoadThreadState.mockResolvedValue({});
+        mockSaveThreadState.mockResolvedValue(undefined);
         mockLoadAttachments.mockResolvedValue([]);
-        mockPost.mockResolvedValue(undefined);
+        mockPost.mockResolvedValue({
+            root: { uri: "at://did:plc:abc/app.bsky.feed.post/1", cid: "cid-1" },
+            parent: { uri: "at://did:plc:abc/app.bsky.feed.post/1", cid: "cid-1" }
+        });
 
         vi.stubEnv("INTERVAL_MINUTES", "5");
     });
@@ -113,7 +149,7 @@ describe("main", () => {
 
         it("should load last processed post ID", async () => {
             await importMain();
-            expect(mockLoadLastProcessedPostId).toHaveBeenCalledTimes(1);
+            expect(mockLoadLastProcessedMarker).toHaveBeenCalledTimes(1);
         });
 
         it("should set up interval with configured minutes", async () => {
@@ -127,6 +163,12 @@ describe("main", () => {
             await importMain();
             expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 5 * 60 * 1000);
         });
+
+        it("should fail module import when INTERVAL_MINUTES is invalid", async () => {
+            vi.stubEnv("INTERVAL_MINUTES", "invalid");
+
+            await expect(import("./main.js")).rejects.toThrow("INTERVAL_MINUTES must be an integer.");
+        });
     });
 
     // ── Post processing ──────────────────────────────────────────────
@@ -134,7 +176,7 @@ describe("main", () => {
     describe("post processing", () => {
         it("should not post when there are no statuses", async () => {
             mockFetchNewToots.mockResolvedValue([]);
-            mockLoadLastProcessedPostId.mockResolvedValue(1000);
+            mockLoadLastProcessedMarker.mockResolvedValue(makeProcessedMarker(1000));
 
             await importMain();
 
@@ -143,7 +185,7 @@ describe("main", () => {
 
         it("should not post on first run (lastProcessedPostId is 0)", async () => {
             mockFetchNewToots.mockResolvedValue([makeStatus({ created_at: "2026-04-02T12:00:00.000Z" })]);
-            mockLoadLastProcessedPostId.mockResolvedValue(0);
+            mockLoadLastProcessedMarker.mockResolvedValue(makeProcessedMarker(0));
 
             await importMain();
 
@@ -152,11 +194,13 @@ describe("main", () => {
 
         it("should save lastProcessedPostId on first run", async () => {
             mockFetchNewToots.mockResolvedValue([makeStatus({ created_at: "2026-04-02T12:00:00.000Z" })]);
-            mockLoadLastProcessedPostId.mockResolvedValue(0);
+            mockLoadLastProcessedMarker.mockResolvedValue(makeProcessedMarker(0));
 
             await importMain();
 
-            expect(mockSaveLastProcessedPostId).toHaveBeenCalledWith(new Date("2026-04-02T12:00:00.000Z").getTime());
+            expect(mockSaveLastProcessedMarker).toHaveBeenCalledWith(
+                makeProcessedMarker(new Date("2026-04-02T12:00:00.000Z").getTime(), "1")
+            );
         });
 
         it("should post new statuses to bluesky", async () => {
@@ -164,7 +208,9 @@ describe("main", () => {
                 created_at: "2026-04-02T12:00:00.000Z",
                 content: "Hello Bluesky!"
             });
-            mockLoadLastProcessedPostId.mockResolvedValue(new Date("2026-04-01T00:00:00.000Z").getTime());
+            mockLoadLastProcessedMarker.mockResolvedValue(
+                makeProcessedMarker(new Date("2026-04-01T00:00:00.000Z").getTime())
+            );
             mockFetchNewToots.mockResolvedValue([status]);
             mockLoadAttachments.mockResolvedValue([]);
 
@@ -178,7 +224,9 @@ describe("main", () => {
                 created_at: "2026-03-01T12:00:00.000Z",
                 content: "Old post"
             });
-            mockLoadLastProcessedPostId.mockResolvedValue(new Date("2026-04-01T00:00:00.000Z").getTime());
+            mockLoadLastProcessedMarker.mockResolvedValue(
+                makeProcessedMarker(new Date("2026-04-01T00:00:00.000Z").getTime())
+            );
             mockFetchNewToots.mockResolvedValue([oldStatus]);
 
             await importMain();
@@ -197,7 +245,9 @@ describe("main", () => {
                 created_at: "2026-04-02T12:00:00.000Z",
                 content: "First"
             });
-            mockLoadLastProcessedPostId.mockResolvedValue(new Date("2026-04-01T00:00:00.000Z").getTime());
+            mockLoadLastProcessedMarker.mockResolvedValue(
+                makeProcessedMarker(new Date("2026-04-01T00:00:00.000Z").getTime())
+            );
             // API returns newest first
             mockFetchNewToots.mockResolvedValue([newer, older]);
             mockLoadAttachments.mockResolvedValue([]);
@@ -214,7 +264,9 @@ describe("main", () => {
                 created_at: "2026-04-02T12:00:00.000Z",
                 content: "Post with image"
             });
-            mockLoadLastProcessedPostId.mockResolvedValue(new Date("2026-04-01T00:00:00.000Z").getTime());
+            mockLoadLastProcessedMarker.mockResolvedValue(
+                makeProcessedMarker(new Date("2026-04-01T00:00:00.000Z").getTime())
+            );
             mockFetchNewToots.mockResolvedValue([status]);
 
             const attachments = [
@@ -231,13 +283,17 @@ describe("main", () => {
         it("should save the newest timestamp as lastProcessedPostId", async () => {
             const newer = makeStatus({ created_at: "2026-04-02T14:00:00.000Z" });
             const older = makeStatus({ created_at: "2026-04-02T12:00:00.000Z" });
-            mockLoadLastProcessedPostId.mockResolvedValue(new Date("2026-04-01T00:00:00.000Z").getTime());
+            mockLoadLastProcessedMarker.mockResolvedValue(
+                makeProcessedMarker(new Date("2026-04-01T00:00:00.000Z").getTime())
+            );
             mockFetchNewToots.mockResolvedValue([newer, older]);
             mockLoadAttachments.mockResolvedValue([]);
 
             await importMain();
 
-            expect(mockSaveLastProcessedPostId).toHaveBeenCalledWith(new Date("2026-04-02T14:00:00.000Z").getTime());
+            expect(mockSaveLastProcessedMarker).toHaveBeenCalledWith(
+                makeProcessedMarker(new Date("2026-04-02T14:00:00.000Z").getTime(), "1")
+            );
         });
 
         it("should not update newTimestampId when a later status has an equal or older timestamp", async () => {
@@ -251,7 +307,9 @@ describe("main", () => {
                 created_at: "2026-04-02T12:00:00.000Z",
                 content: "Second"
             });
-            mockLoadLastProcessedPostId.mockResolvedValue(new Date("2026-04-01T00:00:00.000Z").getTime());
+            mockLoadLastProcessedMarker.mockResolvedValue(
+                makeProcessedMarker(new Date("2026-04-01T00:00:00.000Z").getTime())
+            );
             // After reverse: status2 (12:00) first, then status1 (14:00)
             // Then add a third with same timestamp as status1 to trigger the false branch
             const status3 = makeStatus({
@@ -265,7 +323,9 @@ describe("main", () => {
             await importMain();
 
             // The newest timestamp should still be 14:00
-            expect(mockSaveLastProcessedPostId).toHaveBeenCalledWith(new Date("2026-04-02T14:00:00.000Z").getTime());
+            expect(mockSaveLastProcessedMarker).toHaveBeenCalledWith(
+                makeProcessedMarker(new Date("2026-04-02T14:00:00.000Z").getTime(), "3")
+            );
         });
 
         it("should not save lastProcessedPostId when no statuses returned", async () => {
@@ -273,7 +333,7 @@ describe("main", () => {
 
             await importMain();
 
-            expect(mockSaveLastProcessedPostId).not.toHaveBeenCalled();
+            expect(mockSaveLastProcessedMarker).not.toHaveBeenCalled();
         });
     });
 
@@ -296,11 +356,11 @@ describe("main", () => {
 
             await importMain();
 
-            expect(mockSaveLastProcessedPostId).not.toHaveBeenCalled();
+            expect(mockSaveLastProcessedMarker).not.toHaveBeenCalled();
             consoleSpy.mockRestore();
         });
 
-        it("should continue processing when loadAttachments fails for one status", async () => {
+        it("should stop processing after a failed status and keep it retryable", async () => {
             const status1 = makeStatus({
                 id: "1",
                 created_at: "2026-04-02T12:00:00.000Z",
@@ -311,7 +371,9 @@ describe("main", () => {
                 created_at: "2026-04-02T14:00:00.000Z",
                 content: "Second"
             });
-            mockLoadLastProcessedPostId.mockResolvedValue(new Date("2026-04-01T00:00:00.000Z").getTime());
+            mockLoadLastProcessedMarker.mockResolvedValue(
+                makeProcessedMarker(new Date("2026-04-01T00:00:00.000Z").getTime())
+            );
             // reversed in code: status1 processed first, then status2
             mockFetchNewToots.mockResolvedValue([status2, status1]);
             mockLoadAttachments.mockRejectedValueOnce(new Error("attachment error")).mockResolvedValueOnce([]);
@@ -320,17 +382,52 @@ describe("main", () => {
 
             await importMain();
 
-            expect(mockPost).toHaveBeenCalledTimes(1);
-            expect(mockPost).toHaveBeenCalledWith("Second", []);
+            expect(mockPost).not.toHaveBeenCalled();
+            expect(mockSaveLastProcessedMarker).not.toHaveBeenCalled();
             consoleSpy.mockRestore();
         });
 
-        it("should still save lastProcessedPostId when loadAttachments fails", async () => {
+        it("should post consecutive self replies as a bluesky thread", async () => {
+            const root = makeStatus({
+                id: "1",
+                created_at: "2026-04-02T12:00:00.000Z",
+                content: "Root post",
+                in_reply_to_id: null
+            });
+            const reply = makeStatus({
+                id: "2",
+                created_at: "2026-04-02T12:05:00.000Z",
+                content: "Reply post",
+                in_reply_to_id: "1"
+            });
+            mockLoadLastProcessedMarker.mockResolvedValue(
+                makeProcessedMarker(new Date("2026-04-01T00:00:00.000Z").getTime())
+            );
+            // API returns newest first
+            mockFetchNewToots.mockResolvedValue([reply, root]);
+            mockLoadAttachments.mockResolvedValue([]);
+
+            const rootRef = { uri: "at://did:plc:abc/app.bsky.feed.post/root", cid: "cid-root" };
+            const replyRef = { uri: "at://did:plc:abc/app.bsky.feed.post/reply", cid: "cid-reply" };
+            const rootThread = { root: rootRef, parent: rootRef };
+            const replyThread = { root: rootRef, parent: replyRef };
+            mockPost.mockResolvedValueOnce(rootThread).mockResolvedValueOnce(replyThread);
+
+            await importMain();
+
+            expect(mockPost).toHaveBeenCalledTimes(2);
+            expect(mockPost).toHaveBeenNthCalledWith(1, "Root post", []);
+            expect(mockPost).toHaveBeenNthCalledWith(2, "Reply post", [], rootThread);
+        });
+
+        it("should not save lastProcessedPostId when loadAttachments fails", async () => {
             const status = makeStatus({
                 created_at: "2026-04-02T12:00:00.000Z",
                 content: "Failed post"
             });
-            mockLoadLastProcessedPostId.mockResolvedValue(new Date("2026-04-01T00:00:00.000Z").getTime());
+            mockLoadLastProcessedMarker.mockResolvedValue(
+                makeProcessedMarker(new Date("2026-04-01T00:00:00.000Z").getTime())
+            );
             mockFetchNewToots.mockResolvedValue([status]);
             mockLoadAttachments.mockRejectedValue(new Error("attachment error"));
 
@@ -338,8 +435,50 @@ describe("main", () => {
 
             await importMain();
 
-            expect(mockSaveLastProcessedPostId).toHaveBeenCalledWith(new Date("2026-04-02T12:00:00.000Z").getTime());
+            expect(mockSaveLastProcessedMarker).not.toHaveBeenCalled();
             consoleSpy.mockRestore();
+        });
+
+        it("should continue a thread across polling cycles", async () => {
+            const root = makeStatus({
+                id: "1",
+                created_at: "2026-04-02T12:00:00.000Z",
+                content: "Root post"
+            });
+            const reply = makeStatus({
+                id: "2",
+                created_at: "2026-04-02T12:05:00.000Z",
+                content: "Reply post",
+                in_reply_to_id: "1"
+            });
+            const previousTimestamp = new Date("2026-04-01T00:00:00.000Z").getTime();
+            const rootTimestamp = new Date(root.created_at).getTime();
+            mockLoadLastProcessedMarker
+                .mockResolvedValueOnce(makeProcessedMarker(previousTimestamp))
+                .mockResolvedValueOnce(makeProcessedMarker(rootTimestamp, "1"));
+            mockFetchNewToots.mockResolvedValueOnce([root]).mockResolvedValueOnce([reply, root]);
+            mockLoadThreadState.mockResolvedValueOnce({}).mockResolvedValueOnce({
+                [root.id]: {
+                    root: { uri: "at://root", cid: "cid-root" },
+                    parent: { uri: "at://root", cid: "cid-root" }
+                }
+            });
+
+            const rootThread = {
+                root: { uri: "at://root", cid: "cid-root" },
+                parent: { uri: "at://root", cid: "cid-root" }
+            };
+            const replyThread = {
+                root: rootThread.root,
+                parent: { uri: "at://reply", cid: "cid-reply" }
+            };
+            mockPost.mockResolvedValueOnce(rootThread).mockResolvedValueOnce(replyThread);
+
+            await importMain();
+            await (intervalCallback as () => Promise<void>)();
+
+            expect(mockPost).toHaveBeenCalledTimes(2);
+            expect(mockPost).toHaveBeenNthCalledWith(2, "Reply post", [], rootThread);
         });
     });
 
@@ -347,7 +486,7 @@ describe("main", () => {
 
     describe("interval", () => {
         it("should fetch toots again when interval fires", async () => {
-            mockLoadLastProcessedPostId.mockResolvedValue(0);
+            mockLoadLastProcessedMarker.mockResolvedValue(makeProcessedMarker(0));
             mockFetchNewToots.mockResolvedValue([]);
 
             await importMain();
@@ -369,6 +508,32 @@ describe("main", () => {
 
             expect(intervalCallback).toBeNull();
             consoleSpy.mockRestore();
+        });
+
+        it("should skip overlapping interval runs", async () => {
+            const resolveFetchRef: { current: (() => void) | null } = { current: null };
+            mockLoadLastProcessedMarker.mockResolvedValue(makeProcessedMarker(0));
+            mockFetchNewToots.mockResolvedValueOnce([]).mockImplementation(
+                () =>
+                    new Promise<void>((resolve) => {
+                        resolveFetchRef.current = () => resolve();
+                    })
+            );
+
+            await importMain();
+            expect(intervalCallback).not.toBeNull();
+
+            const firstTickPromise = (intervalCallback as () => Promise<void>)();
+            const secondTickPromise = (intervalCallback as () => Promise<void>)();
+            await flushPromises();
+
+            expect(mockFetchNewToots).toHaveBeenCalledTimes(2);
+
+            if (resolveFetchRef.current) {
+                resolveFetchRef.current();
+            }
+            await firstTickPromise;
+            await secondTickPromise;
         });
     });
 });

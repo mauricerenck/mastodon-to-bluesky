@@ -101,6 +101,11 @@ describe("bluesky", () => {
             vi.stubEnv("BLUESKY_PASSWORD", "");
             await expect(login()).rejects.toThrow("BLUESKY_PASSWORD");
         });
+
+        it("should throw when BLUESKY_MAX_POST_LENGTH is invalid", async () => {
+            vi.stubEnv("BLUESKY_MAX_POST_LENGTH", "not-a-number");
+            await expect(login()).rejects.toThrow("BLUESKY_MAX_POST_LENGTH must be an integer.");
+        });
     });
 
     describe("login", () => {
@@ -270,9 +275,14 @@ describe("bluesky", () => {
             // A long message that splitText will split into two parts
             const longText = "A".repeat(150) + " " + "B".repeat(150) + " " + "C".repeat(100);
 
-            await post(longText, []);
+            const result = await post(longText, []);
 
             expect(mockPost).toHaveBeenCalledTimes(2);
+
+            expect(result).toEqual({
+                root: rootResponse,
+                parent: replyResponse
+            });
 
             // Second call should be a reply to the root
             const secondCall = mockPost.mock.calls[1][0];
@@ -332,6 +342,29 @@ describe("bluesky", () => {
                 const replyCall = mockPost.mock.calls[1][0];
                 expect(replyCall.embed).toBeUndefined();
             }
+        });
+
+        it("should continue an existing bluesky thread", async () => {
+            const existingRoot = { uri: "at://existing/root", cid: "existing-root" };
+            const existingParent = { uri: "at://existing/parent", cid: "existing-parent" };
+            const newReply = { uri: "at://new/reply", cid: "new-reply" };
+            mockPost.mockResolvedValueOnce(newReply);
+
+            const result = await post("Reply in existing thread", [], {
+                root: existingRoot,
+                parent: existingParent
+            });
+
+            expect(mockPost).toHaveBeenCalledTimes(1);
+            expect(mockPost).toHaveBeenCalledWith({
+                text: "Reply in existing thread",
+                facets: [],
+                reply: {
+                    root: existingRoot,
+                    parent: existingParent
+                }
+            });
+            expect(result).toEqual({ root: existingRoot, parent: newReply });
         });
     });
 });

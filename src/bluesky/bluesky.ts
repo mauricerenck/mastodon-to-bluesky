@@ -1,10 +1,14 @@
 import { RichText, AtpAgent } from "@atproto/api";
+import { getIntegerEnv } from "../config.js";
+import { logger } from "../logger.js";
 import type { Attachment } from "../mastodon/types.js";
 import { sanitizeHtml, splitText, urlToUint8Array } from "../utils.js";
-import type { BlueSkySettings } from "./types.js";
+import type { BlueskyThreadReference, BlueSkySettings } from "./types.js";
 
 let settings: BlueSkySettings = null!;
 let agent: AtpAgent = null!;
+type BlueskyPostResponse = Awaited<ReturnType<AtpAgent["post"]>>;
+type BlueskyMessage = Awaited<ReturnType<typeof createBlueskyMessage>> & { reply?: BlueskyThreadReference };
 
 export const resetCache = () => {
     settings = null!;
@@ -34,7 +38,11 @@ function loadSettings() {
     const password = process.env.BLUESKY_PASSWORD;
     if (!password) throw new Error("BLUESKY_PASSWORD");
 
-    const maxPostLength = parseInt(process.env.BLUESKY_MAX_POST_LENGTH ?? "300");
+    const maxPostLength = getIntegerEnv("BLUESKY_MAX_POST_LENGTH", {
+        defaultValue: 300,
+        min: 50,
+        max: 3000
+    });
 
     return {
         url,
@@ -44,11 +52,25 @@ function loadSettings() {
     } as BlueSkySettings;
 }
 
-export const post = async (message: string, attachments: Attachment[]) => {
+export const post = async (
+    message: string,
+    attachments: readonly Attachment[],
+    blueskyThread?: BlueskyThreadReference
+): Promise<BlueskyThreadReference> => {
     const messageParts = splitText(sanitizeHtml(message), settings.maxPostLength);
     const uploadedImages = await uploadImages(attachments);
 
-    const rootMessage = await createBlueskyMessage(messageParts[0]);
+    let rootMessage: BlueskyMessage = await createBlueskyMessage(messageParts[0]);
+    if (blueskyThread) {
+        rootMessage = {
+            ...rootMessage,
+            reply: {
+                root: blueskyThread.root,
+                parent: blueskyThread.parent
+            }
+        };
+    }
+
     const embedPart =
         uploadedImages.length === 0
             ? {}
@@ -66,21 +88,22 @@ export const post = async (message: string, attachments: Attachment[]) => {
         ...embedPart
     });
 
-    if (messageParts.length === 1) {
-        return;
-    }
-
-    let replyMessageResponse = null;
+    let parentMessageResponse = rootMessageResponse;
     for (let index = 1; index < messageParts.length; index++) {
         const replyMessage = await createBlueskyMessage(messageParts[index]);
-        replyMessageResponse = await agent.post({
+        parentMessageResponse = await agent.post({
             ...replyMessage,
             reply: {
-                root: rootMessageResponse,
-                parent: replyMessageResponse ?? rootMessageResponse
+                root: blueskyThread?.root ?? rootMessageResponse,
+                parent: parentMessageResponse
             }
         });
     }
+
+    return {
+        root: blueskyThread?.root ?? rootMessageResponse,
+        parent: parentMessageResponse
+    };
 };
 
 async function loginInternal(url: string, handle: string, password: string): Promise<AtpAgent> {
@@ -93,21 +116,21 @@ async function loginInternal(url: string, handle: string, password: string): Pro
         });
         if (!response.success) throw new Error("login failed");
 
-        console.log("🔒 Successfully logged in to Bluesky");
+        logger.info("Successfully logged in to Bluesky", { handle });
         return agent;
     } catch (error) {
-        console.error("🔒 Login to Bluesky failed:", error);
+        logger.error("Login to Bluesky failed", { handle, error });
         throw error;
     }
 }
 
-async function uploadImages(attachments: Attachment[]) {
+async function uploadImages(attachments: readonly Attachment[]) {
     const images = attachments.filter((attachment) => attachment.type === "image");
     const uploadedImages = [] as Attachment[];
 
     for (const image of images) {
         if (!image.mimeType) {
-            console.log("skip image without mime-type", image.url);
+            logger.warn("Skipping image upload without mime-type", { url: image.url });
             continue;
         }
 
@@ -124,7 +147,7 @@ async function uploadImages(attachments: Attachment[]) {
                 blob: data.blob
             });
         } catch (err) {
-            console.error("can't upload image", image.url, err);
+            logger.error("Image upload failed", { url: image.url, error: err });
         }
     }
 
