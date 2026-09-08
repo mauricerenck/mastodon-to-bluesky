@@ -38,13 +38,25 @@ export const fetchNewToots = async () => {
     const accountId = account.id;
 
     try {
-        const allStatuses = (await getStatuses(settings.url, accountId)).filter(
-            // filter replies and re-blogs
-            (status) =>
-                ((status.in_reply_to_id === null && status.in_reply_to_account_id === null) ||
-                    (status.in_reply_to_id !== null && status.in_reply_to_account_id === accountId)) &&
-                status.reblog === null
-        );
+        const allStatuses = (await getStatuses(settings.url, accountId))
+            .filter(
+                // filter replies and re-blogs
+                (status) =>
+                    ((status.in_reply_to_id === null && status.in_reply_to_account_id === null) ||
+                        (status.in_reply_to_id !== null && status.in_reply_to_account_id === accountId)) &&
+                    status.reblog === null
+            )
+            .filter(
+                // filter tags set to be ignored
+                (status) => {
+                    if (!ignoredTags || ignoredTags.length === 0) {
+                        return true;
+                    }
+
+                    const statusTags = new Set(status.tags.map((tag) => tag.name.toLowerCase().trim()));
+                    return !ignoredTags.some((tag) => statusTags.has(tag));
+                }
+            );
 
         //return lastProcessedPostId === 0 ? allStatuses : findAfterDate(allStatuses, new Date(lastProcessedPostId));
         return allStatuses;
@@ -72,7 +84,9 @@ async function getStatuses(instanceUrl: string, accountId: string) {
     while (nextUrl && pageCount < maxPages) {
         const response = await fetch(nextUrl);
         if (!response.ok) {
-            throw new Error(`Failed to fetch statuses for account ${accountId}: ${response.status} ${response.statusText}`);
+            throw new Error(
+                `Failed to fetch statuses for account ${accountId}: ${response.status} ${response.statusText}`
+            );
         }
 
         allStatuses.push(...((await response.json()) as Status[]));
