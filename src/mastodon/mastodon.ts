@@ -37,6 +37,12 @@ export const fetchNewToots = async () => {
     }
     const accountId = account.id;
 
+    const ignoredTags = process.env.IGNORE_TAGS
+        ? process.env.IGNORE_TAGS.toLowerCase()
+              .split(",")
+              .map((tag) => tag.trim())
+        : null;
+
     try {
         const allStatuses = (await getStatuses(settings.url, accountId))
             .filter(
