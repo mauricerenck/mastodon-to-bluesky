@@ -17,7 +17,7 @@
     "@atproto/api": "^0.32.5",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^11.0.1",
-    "dotenv": "^18.0.9",
+    "dotenv": "^18.0.10",
     "sanitize-html": "^2.18.2"
   },
   "devDependencies": {
